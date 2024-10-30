@@ -8,6 +8,7 @@ from se_agent.issue_analyzer import analyze_issue
 from se_agent.change_suggester import suggest_changes
 from se_agent.localizer import localize_issue
 from se_agent.project import Project
+from se_agent.project_info import ProjectInfo
 from se_agent.project_manager import ProjectManager
 
 app = Flask(__name__)
@@ -25,6 +26,38 @@ def get_project_manager():
     if not os.path.exists(projects_store):
         os.makedirs(projects_store)
     return ProjectManager(projects_store)
+
+@app.route('/onboard', methods=['POST', 'PUT'])
+def onboard_project():
+    """
+    Endpoint to onboard a new project or refresh an existing project.
+    """
+    data = request.json
+    if not data:
+        return jsonify({'status': 'Invalid data'}), 400
+
+    try:
+        project_info = ProjectInfo(**data)
+    except TypeError as e:
+        return jsonify({'status': 'Invalid ProjectInfo structure', 'error': str(e)}), 400
+
+    project_manager = get_project_manager()
+    existing_project = project_manager.get_project(project_info.repo_full_name)
+
+    if request.method == 'POST':
+        if existing_project:
+            return jsonify({'status': 'Project already exists'}), 409
+        project_manager.add_project(project_info)
+
+    # Proceed with onboarding (for both POST and PUT)
+    try:
+        github_token = os.getenv('GITHUB_TOKEN')
+        project = Project(github_token, os.getenv('PROJECTS_STORE'), project_info)
+        project.onboard()
+        return jsonify({'status': 'Project onboarded successfully'}), 200
+    except Exception as e:
+        logger.exception("Error during project onboarding.")
+        return jsonify({'status': 'Error onboarding project', 'error': str(e)}), 500
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
