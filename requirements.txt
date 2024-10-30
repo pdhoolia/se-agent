@@ -1,0 +1,13 @@
+Flask
+openai
+python-dotenv
+pydantic
+PyGithub
+gitpython
+pytest
+pytest-flask
+langchain
+langchain-openai
+langchain-ibm
+langchain_milvus
+pandas

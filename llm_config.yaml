@@ -1,0 +1,29 @@
+providers:
+  openai:
+    default_model: "gpt-4o"
+    default_max_tokens: 256
+    tasks:
+      generate_code_summary:
+        max_tokens: 1536
+        model_name: "gpt-4o-mini"
+      generate_package_summary:
+        max_tokens: 512
+        model_name: "gpt-4o"
+      localize:
+        max_tokens: 512
+        model_name: "gpt-4o"
+      generate_suggestions:
+        max_tokens: 3000
+        model_name: "gpt-4o"
+  watsonx:
+    default_model: "meta-llama/llama-3-405b-instruct"
+    default_max_tokens: 256
+    tasks:
+      generate_code_summary:
+        max_tokens: 1536
+      generate_package_summary:
+        max_tokens: 512
+      localize:
+        max_tokens: 512
+      generate_suggestions:
+        max_tokens: 3000

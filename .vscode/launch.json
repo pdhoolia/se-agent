@@ -1,0 +1,66 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {   "name": "Main",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/se_agent/main.py",
+            "args": [],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {   "name": "Count files in a directory",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/se_agent/util/file_count.py",
+            "args": [
+                "/Users/pdhoolia/se-agent-projects/conversational-ai/se-agent/repo/se_agent",
+                "--ext", ".py"
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {   "name": "Count folders in a directory",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/se_agent/util/folder_count.py",
+            "args": [
+                "/Users/pdhoolia/se-agent-projects/conversational-ai/se-agent/repo/se_agent"
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {   "name": "Project onboard",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/se_agent/onboard_agent.py",
+            "args": [
+                //"conversational-ai/se-agent",
+                //"se_agent",
+                //"--api_url", "https://github.ibm.com/api/v3",
+                
+                //"pdhoolia/qiskit",
+                //"qiskit",
+                //"--main_branch", "main",
+                
+                //"pdhoolia/qiskit-addon-obp",
+                //"qiskit_addon_obp",
+                //"--main_branch", "main",
+
+                "pdhoolia/se-agent-test-repo",
+                "se_agent_test_repo",
+                //"--main_branch", "main",
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }
+    ]
+}
