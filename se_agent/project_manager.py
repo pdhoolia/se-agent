@@ -18,8 +18,11 @@ class ProjectManager:
         return [ProjectInfo(**proj) for proj in projects_data]
 
     def _save_projects(self):
+        def to_dict(obj):
+            return {k: v for k, v in obj.__dict__.items() if v is not None}
+
         with open(self.projects_file, 'w') as f:
-            json.dump([proj.__dict__ for proj in self.projects], f, indent=2)
+            json.dump([to_dict(proj) for proj in self.projects], f, indent=2)
 
     def add_project(self, project_info: ProjectInfo):
         if self.get_project(project_info.repo_full_name):
