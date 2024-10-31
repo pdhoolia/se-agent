@@ -36,8 +36,8 @@
             margin-top: 2rem; /* Increased spacing above the first input */
         }
 
-        .bx--checkbox-label {
-            margin-left: 1.5rem; /* Increased spacing between checkbox and label */
+        .bx--checkbox-wrapper .bx--checkbox-label {
+            margin-left: 1.5rem !important; /* Added more spacing with higher specificity */
         }
     </style>
 </head>
@@ -60,7 +60,7 @@
                 <label for="main_branch" class="bx--label">Main Branch</label>
                 <input type="text" class="bx--text-input" id="main_branch" name="main_branch" placeholder="e.g., main" required>
             </div>
-            <div class="bx--form-item">
+            <div class="bx--form-item bx--checkbox-wrapper">
                 <input type="checkbox" class="bx--checkbox" id="refresh_if_exists" name="refresh_if_exists">
                 <label for="refresh_if_exists" class="bx--label bx--checkbox-label">Refresh if project exists</label>
             </div>
