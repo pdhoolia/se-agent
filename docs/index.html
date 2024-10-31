@@ -34,18 +34,14 @@
         }
 
         .bx--form-item:first-of-type {
-            margin-top: 2rem; /* Increased spacing above the first input */
+            margin-top: 2rem;
         }
 
         .bx--checkbox-wrapper .bx--checkbox-label {
-            margin-left: 1.5rem !important; /* Added more spacing with higher specificity */
+            margin-left: 1.5rem !important;
         }
 
-        .spinner-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        #spinner {
             display: none;
         }
     </style>
@@ -75,12 +71,13 @@
             </div>
             <div class="bx--btn-set">
                 <button type="button" class="bx--btn bx--btn--secondary">Cancel</button>
-                <button type="submit" class="bx--btn bx--btn--primary">Save</button>
+                <button type="submit" class="bx--btn bx--btn--primary">Onboard</button>
+            </div>
+            <div id="spinner" class="bx--inline-loading bx--loading--small" data-inline-loading>
+                <div class="bx--loading bx--loading--small"></div>
+                <p class="bx--inline-loading__text">Onboarding project ...</p>
             </div>
         </form>
-        <div class="spinner-container" id="spinner">
-            <div data-loading class="bx--loading bx--loading--small"></div>
-        </div>
     </div>
 
     <!-- Carbon JavaScript -->
@@ -107,10 +104,7 @@
 
             try {
                 // Show the spinner
-                spinner.style.display = 'block';
-
-                // Carbon's JavaScript initialization
-                CarbonComponents.Loading.init();
+                spinner.style.display = 'flex';
 
                 const response = await fetch('https://dhoolia.ngrok.io/onboard', {
                     method: method,
