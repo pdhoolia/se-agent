@@ -1,28 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Onboard New Project</title>
+    <!-- Bootstrap CSS -->
+    <link
+        href="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 </head>
-<body>
-    <h1>Onboard New Project</h1>
-    <form id="onboardForm">
-        <label for="repo_full_name">Repository Full Name:</label>
-        <input type="text" id="repo_full_name" name="repo_full_name" required><br><br>
-        
-        <label for="src_folder">Source Folder:</label>
-        <input type="text" id="src_folder" name="src_folder" required><br><br>
-        
-        <label for="main_branch">Main Branch:</label>
-        <input type="text" id="main_branch" name="main_branch" required><br><br>
-        
-        <button type="submit">Submit</button>
-    </form>
+
+<body class="bg-light">
+    <div class="container my-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h2>Onboard New Project</h2>
+            </div>
+            <div class="card-body">
+                <form id="onboardForm">
+                    <div class="mb-3">
+                        <label for="repo_full_name" class="form-label">Repository Full Name</label>
+                        <input type="text" class="form-control" id="repo_full_name" name="repo_full_name" placeholder="e.g., pdhoolia/se-agent" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="src_folder" class="form-label">Source Folder</label>
+                        <input type="text" class="form-control" id="src_folder" name="src_folder" placeholder="e.g., se_agent" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="main_branch" class="form-label">Main Branch</label>
+                        <input type="text" class="form-control" id="main_branch" name="main_branch" placeholder="e.g., main" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JavaScript for handling form submission -->
     <script>
         document.getElementById('onboardForm').addEventListener('submit', async function(event) {
             event.preventDefault();
-            
+
             const repoFullName = document.getElementById('repo_full_name').value;
             const srcFolder = document.getElementById('src_folder').value;
             const mainBranch = document.getElementById('main_branch').value;
@@ -56,4 +79,5 @@
         });
     </script>
 </body>
+
 </html>
