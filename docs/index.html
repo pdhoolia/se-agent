@@ -99,12 +99,8 @@
                     body: JSON.stringify(requestBody)
                 });
 
-                if (response.ok) {
-                    alert('Project onboarded successfully.');
-                } else {
-                    const errorData = await response.json();
-                    alert(`Error: ${errorData.message}`);
-                }
+                const responseData = await response.json();
+                alert(responseData.status);
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while onboarding the project.');
