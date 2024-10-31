@@ -6,6 +6,7 @@ PyGithub
 gitpython
 pytest
 pytest-flask
+flask_cors
 langchain
 langchain-openai
 langchain-ibm

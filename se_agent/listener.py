@@ -3,6 +3,7 @@ import logging
 import os
 
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 from se_agent.issue_analyzer import analyze_issue
 from se_agent.change_suggester import suggest_changes
@@ -12,6 +13,7 @@ from se_agent.project_info import ProjectInfo
 from se_agent.project_manager import ProjectManager
 
 app = Flask(__name__)
+CORS(app, resources={r"/onboard": {"origins": "https://pdhoolia.github.io"}})
 
 IGNORE_TOKEN = "IGNORE"
 
