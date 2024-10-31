@@ -5,45 +5,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Onboard New Project</title>
-    <!-- Bootstrap CSS -->
+    <!-- Carbon CSS -->
     <link
-        href="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/css/bootstrap.min.css"
         rel="stylesheet"
-    >
+        href="https://unpkg.com/carbon-components/css/carbon-components.min.css"
+    />
+    <!-- Custom Styles -->
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .form-container {
+            max-width: 600px;
+            padding: 2rem;
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 
-<body class="bg-light">
-    <div class="container my-5">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h2>Onboard New Project</h2>
+<body class="bx--body">
+    <div class="form-container">
+        <h1 class="bx--type-expressive-heading-03">Onboard New Project</h1>
+        <p class="bx--type-body-long-02">All fields are required unless marked optional.</p>
+        <form id="onboardForm" class="bx--form">
+            <div class="bx--form-item">
+                <label for="repo_full_name" class="bx--label">Repository Full Name</label>
+                <input type="text" class="bx--text-input" id="repo_full_name" name="repo_full_name"
+                    placeholder="e.g., pdhoolia/se-agent" required>
             </div>
-            <div class="card-body">
-                <form id="onboardForm">
-                    <div class="mb-3">
-                        <label for="repo_full_name" class="form-label">Repository Full Name</label>
-                        <input type="text" class="form-control" id="repo_full_name" name="repo_full_name" placeholder="e.g., pdhoolia/se-agent" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="src_folder" class="form-label">Source Folder</label>
-                        <input type="text" class="form-control" id="src_folder" name="src_folder" placeholder="e.g., se_agent" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="main_branch" class="form-label">Main Branch</label>
-                        <input type="text" class="form-control" id="main_branch" name="main_branch" placeholder="e.g., main" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Submit</button>
-                </form>
+            <div class="bx--form-item">
+                <label for="src_folder" class="bx--label">Source Folder</label>
+                <input type="text" class="bx--text-input" id="src_folder" name="src_folder" placeholder="e.g., se_agent" required>
             </div>
-        </div>
+            <div class="bx--form-item">
+                <label for="main_branch" class="bx--label">Main Branch</label>
+                <input type="text" class="bx--text-input" id="main_branch" name="main_branch" placeholder="e.g., main" required>
+            </div>
+            <div class="bx--btn-set">
+                <button type="button" class="bx--btn bx--btn--secondary">Cancel</button>
+                <button type="submit" class="bx--btn bx--btn--primary">Save</button>
+            </div>
+        </form>
     </div>
-
-    <!-- Bootstrap JS Bundle with Popper -->
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
     <!-- JavaScript for handling form submission -->
     <script>
-        document.getElementById('onboardForm').addEventListener('submit', async function(event) {
+        document.getElementById('onboardForm').addEventListener('submit', async function (event) {
             event.preventDefault();
 
             const repoFullName = document.getElementById('repo_full_name').value;
