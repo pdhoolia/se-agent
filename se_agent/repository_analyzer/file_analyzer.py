@@ -1,3 +1,4 @@
+import os
 from se_agent.llm.api import call_llm_for_task
 from se_agent.llm.model_configuration_manager import TaskName
 from se_agent.util.markdown import extract_code_block_content
@@ -36,6 +37,9 @@ def generate_semantic_description(filepath):
     Returns:
         str: The generated semantic description.
     """
+    # Check if the file is empty
+    if os.path.getsize(filepath) == 0:
+        return None
 
     with open(filepath, 'r') as file:
         code = file.read()

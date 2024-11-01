@@ -152,11 +152,15 @@ class Project:
 
                 try:
                     summary = generate_semantic_description(full_file_path)
-                    file_doc_path = os.path.join(self.package_details_folder, file_path + ".md")
-                    os.makedirs(os.path.dirname(file_doc_path), exist_ok=True)
-                    with open(file_doc_path, 'w') as f:
-                        f.write(summary)
-                    self.logger.info(f"Updated semantic summary for file: {file_path}")
+                    if summary is not None:
+                        file_doc_path = os.path.join(self.package_details_folder, file_path + ".md")
+                        os.makedirs(os.path.dirname(file_doc_path), exist_ok=True)
+                        with open(file_doc_path, 'w') as f:
+                            f.write(summary)
+                        self.logger.info(f"Updated semantic summary for file: {file_path}")
+                    else:
+                        self.logger.info(f"File is empty, no summary generated for file: {file_path}")
+
                     # Mark the file as processed
                     self.checkpoint_data[FILES_PROCESSED].append(file_path)
                     self.save_checkpoint()
