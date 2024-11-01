@@ -28,7 +28,7 @@ Following files have been suggested as relevant to the issue and discussion:
 Here are the corresponding code files:
 {code_files}
 
-Based on the issue details and ensuing discussion please suggest code or changes to it in these files and (or any new code) along with your reasoning."""
+Based on the issue details and ensuing discussion please suggest code or changes to it in these files and (or any new code) along with your reasoning. In case of code change, don't write the entire code or function. Focus on just the relevant parts that are changed."""
     }
     messages.append(system_message)
 
