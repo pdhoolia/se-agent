@@ -50,7 +50,7 @@
 <body class="bx--body">
     <div class="form-container">
         <h1 class="bx--type-expressive-heading-03">Onboard New Project</h1>
-        <p class="bx--type-body-long-02">All fields are required unless marked optional.</p>
+        <p class="bx--type-body-long-02">As a pre-requisite, please ensure that the GitHub user for the se-agent is added as a collaborator to your repo.</p>
         <form id="onboardForm" class="bx--form">
             <div class="bx--form-item">
                 <label for="repo_full_name" class="bx--label">Repository Full Name</label>
@@ -85,6 +85,11 @@
 
     <!-- JavaScript for handling form submission -->
     <script>
+        function isGitHubEnterprisePages() {
+            const hostname = window.location.hostname;
+            return hostname.includes('github.ibm.com');
+        }
+
         document.getElementById('onboardForm').addEventListener('submit', async function (event) {
             event.preventDefault();
 
@@ -98,6 +103,10 @@
                 src_folder: srcFolder,
                 main_branch: mainBranch
             };
+
+            if (isGitHubEnterprisePages()) {
+                requestBody['api_url'] = "https://github.ibm.com/api/v3";
+            }
 
             const method = refreshIfExists ? 'PUT' : 'POST';
             const spinner = document.getElementById('spinner');
