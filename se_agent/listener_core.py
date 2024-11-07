@@ -116,8 +116,17 @@ def process_issue_event(project: Project, issue_details, comment_details=None):
     """
     # Check if the comment is made by the agent itself
     if comment_details:
-        if '<!-- SE Agent -->' in comment_details.get('body', ''):
+        comment_body = comment_details.get('body', '')
+        
+        # Ignore comments that are from the agent itself
+        if '<!-- SE Agent -->' in comment_body:
             print("Ignoring agent's own comment")
+            return IGNORE_TOKEN
+        
+        # Ignore comments that close the issue
+        closing_keywords = ["fixes", "resolves", "closes"]
+        if any(keyword in comment_body.lower() for keyword in closing_keywords):
+            print("Ignoring comment that closes the issue")
             return IGNORE_TOKEN
 
     # Analyze, localize, and suggest changes for the issue
