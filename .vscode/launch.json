@@ -1,10 +1,20 @@
 {
     "version": "0.2.0",
     "configurations": [
-        {   "name": "Main",
+        {   "name": "flask_server",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/se_agent/main.py",
+            "program": "${workspaceFolder}/se_agent/flask_server.py",
+            "args": [],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {   "name": "lambda_test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/lambda_test.py",
             "args": [],
             "console": "integratedTerminal",
             "env": {
@@ -60,7 +70,8 @@
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
-            }
+            },
+            "justMyCode": false
         }
     ]
 }
