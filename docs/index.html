@@ -50,7 +50,7 @@
 <body class="bx--body">
     <div class="form-container">
         <h1 class="bx--type-expressive-heading-03">Onboard New Project</h1>
-        <p class="bx--type-body-long-02">As a pre-requisite, please ensure that the GitHub user for the se-agent is added as a collaborator to your repo.</p>
+        <p class="bx--type-body-long-02">Pre-req: Add user in se-agent role as a collaborator.</p>
         <form id="onboardForm" class="bx--form">
             <div class="bx--form-item">
                 <label for="repo_full_name" class="bx--label">Repository Full Name</label>
@@ -65,13 +65,17 @@
                 <label for="main_branch" class="bx--label">Main Branch</label>
                 <input type="text" class="bx--text-input" id="main_branch" name="main_branch" placeholder="e.g., main" required>
             </div>
-            <div class="bx--form-item bx--checkbox-wrapper">
-                <input type="checkbox" class="bx--checkbox" id="refresh_if_exists" name="refresh_if_exists">
-                <label for="refresh_if_exists" class="bx--label bx--checkbox-label">Refresh if project exists</label>
+            <div class="bx--form-item">
+                <div class="bx--checkbox-wrapper">
+                    <input type="checkbox" class="bx--checkbox" id="refresh_if_exists" name="refresh_if_exists">
+                    <label for="refresh_if_exists" class="bx--label bx--checkbox-label">Refresh if project exists</label>
+                </div>
             </div>
-            <div class="bx--btn-set">
-                <button type="button" class="bx--btn bx--btn--secondary">Cancel</button>
-                <button type="submit" class="bx--btn bx--btn--primary">Onboard</button>
+            <div class="bx--form-item">
+                <div class="bx--btn-set">
+                    <button type="button" class="bx--btn bx--btn--secondary">Cancel</button>
+                    <button type="submit" class="bx--btn bx--btn--primary">Onboard</button>
+                </div>
             </div>
             <div id="spinner" class="bx--inline-loading bx--loading--small" data-inline-loading>
                 <div class="bx--loading bx--loading--small"></div>
