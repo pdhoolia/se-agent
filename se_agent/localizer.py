@@ -1,4 +1,6 @@
 import os
+import logging
+logger = logging.getLogger("se-agent")
 
 from pydantic import BaseModel
 from langchain_core.output_parsers import PydanticOutputParser
@@ -130,7 +132,7 @@ def localize_issue(project: Project, issue_details, analysis_results):
         if llm_response_relevant_packages:
             relevant_packages = llm_response_relevant_packages.relevant_packages
             # let's log the file_paths that are being added to the prompt
-            project.logger.debug(f"Relevant Packages: {relevant_packages}")
+            logger.debug(f"Relevant Packages: {relevant_packages}")
         elif llm_response_relevant_packages.refusal:
             print(f"Refusal from LLM: {llm_response_relevant_packages.refusal}")
             return None
@@ -154,7 +156,7 @@ def localize_issue(project: Project, issue_details, analysis_results):
         # if file_localization_response.parsed:
         if llm_response_file_localization_suggestions:
             localization_suggestions = llm_response_file_localization_suggestions.file_localization_suggestions
-            project.logger.debug(f"File Localization Suggestions: {localization_suggestions}")
+            logger.debug(f"File Localization Suggestions: {localization_suggestions}")
         elif llm_response_file_localization_suggestions.refusal:
             print(f"Refusal from LLM: {llm_response_file_localization_suggestions.refusal}")
             return None

@@ -1,8 +1,9 @@
 import git
 import json
-import logging
 import re
 import os
+import logging
+logger = logging.getLogger("se-agent")
 
 from github import Github, Auth
 
@@ -33,13 +34,6 @@ class Project:
             self.github = Github(base_url=f"{self.info.api_url}", login_or_token=self.github_token)
         else:
             self.github = Github(auth=Auth.Token(self.github_token))
-
-        # Set up logging
-        self.logger = logging.getLogger(self.info.repo_full_name)
-        self.logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
-        self.logger.addHandler(handler)
 
         # Load checkpoint data if it exists
         self.checkpoint_data = self.load_checkpoint()
@@ -80,48 +74,64 @@ class Project:
             os.remove(self.checkpoint_file)
     
     def clone_repository(self):
+        """ Clone the repository if it doesn't exist """
+        # Check if the repository is already cloned
+        if os.listdir(self.repo_folder):
+            logger.info("Repository already cloned.")
+            git_cmd = git.cmd.Git()
+            try:
+                safe_directories = git_cmd.config('--global', '--get-all', 'safe.directory').splitlines()
+            except git.GitCommandError:
+                # If the command fails, assume no safe directories are set
+                safe_directories = []
+            # Add to safe directories if not already present
+            if self.repo_folder not in safe_directories:
+                git_cmd.config('--global', '--add', 'safe.directory', self.repo_folder)
+                logger.info(f"Safe directory added: {self.repo_folder}")
+            return
+
         # Clone the repository
-        self.logger.info(f"Cloning repository '{self.info.repo_full_name}'...")
+        logger.info(f"Cloning repository '{self.info.repo_full_name}'...")
+        
         try:
             repo = self.github.get_repo(self.info.repo_full_name)
 
             # Prepare the local repository folder
             os.makedirs(self.repo_folder, exist_ok=True)
-            self.logger.info(f"Using local repository folder: '{self.repo_folder}'")
+            logger.info(f"Using local repository folder: '{self.repo_folder}'")
 
             # Clone the repository
-            self.logger.info(f"Cloning repository into '{self.repo_folder}'...")
+            logger.info(f"Cloning repository into '{self.repo_folder}'...")
             clone_url = repo.clone_url.replace('https://', f'https://{self.github_token}@')
             try:
-                if os.listdir(self.repo_folder):
-                    self.logger.info("Repository already cloned.")
-                else:
-                    git.Repo.clone_from(clone_url, self.repo_folder)
-                    self.logger.info(f"Repository cloned successfully into '{self.repo_folder}'")
+                git.Repo.clone_from(clone_url, self.repo_folder)
+                logger.info(f"Repository cloned successfully into '{self.repo_folder}'")
+                git.cmd.Git().config('--global', '--add', 'safe.directory', self.repo_folder)
+                logger.info(f"Safe directory added: {self.repo_folder}")
             except Exception as e:
-                self.logger.error(f"Error cloning repository: {e}")
+                logger.error(f"Error cloning repository: {e}")
                 raise
         except Exception as e:
-            self.logger.error(f"Error accessing repository: {e}")
+            logger.error(f"Error accessing repository: {e}")
             raise
 
     def pull_latest_changes(self):
         """ Pull the latest changes from the main branch """
-        self.logger.info("Pulling latest changes from main branch...")
+        logger.info("Pulling latest changes from main branch...")
         try:
             repo = git.Repo(self.repo_folder)
             origin = repo.remotes.origin
             origin.pull(self.info.main_branch)
-            self.logger.info("Latest changes pulled from main branch.")
+            logger.info("Latest changes pulled from main branch.")
         except Exception as e:
-            self.logger.error(f"Error pulling latest changes: {e}")
+            logger.error(f"Error pulling latest changes: {e}")
             raise
     
     def update_codebase_understanding(self, modified_files=None):
         """
         Update semantic understanding of the codebase by summarizing only modified files.
         """
-        self.logger.info("Updating codebase understanding incrementally...")
+        logger.info("Updating codebase understanding incrementally...")
 
         # Pull the latest changes from the repository
         self.pull_latest_changes()
@@ -136,9 +146,10 @@ class Project:
                         modified_files.append(relative_path)
 
         # Update semantic understanding for modified files
+        os.makedirs(self.package_details_folder, exist_ok=True)
         for file_path in modified_files:
             if file_path in self.checkpoint_data[FILES_PROCESSED]:
-                self.logger.info(f"Skipping already processed file: {file_path}")
+                logger.info(f"Skipping already processed file: {file_path}")
                 continue
 
             full_file_path = os.path.join(self.module_src_folder, file_path)
@@ -157,15 +168,15 @@ class Project:
                         os.makedirs(os.path.dirname(file_doc_path), exist_ok=True)
                         with open(file_doc_path, 'w') as f:
                             f.write(summary)
-                        self.logger.info(f"Updated semantic summary for file: {file_path}")
+                        logger.info(f"Updated semantic summary for file: {file_path}")
                     else:
-                        self.logger.info(f"File is empty, no summary generated for file: {file_path}")
+                        logger.info(f"File is empty, no summary generated for file: {file_path}")
 
                     # Mark the file as processed
                     self.checkpoint_data[FILES_PROCESSED].append(file_path)
                     self.save_checkpoint()
                 except Exception as e:
-                    self.logger.exception(f"Error summarizing file '{file_path}'")
+                    logger.exception(f"Error summarizing file '{file_path}'")
                     # Add the file to unprocessed
                     if top_level_package not in self.checkpoint_data[UNPROCESSED]:
                         self.checkpoint_data[UNPROCESSED][top_level_package] = []
@@ -183,7 +194,7 @@ class Project:
         for package in top_level_packages:
             # Skip if the package is already processed and has no unprocessed files
             if package in self.checkpoint_data[PACKAGES_PROCESSED] and package not in self.checkpoint_data[UNPROCESSED]:
-                self.logger.info(f"Skipping already processed package: {package}")
+                logger.info(f"Skipping already processed package: {package}")
                 continue
 
             try:
@@ -197,7 +208,7 @@ class Project:
                     with open(package_summary_doc_path, "w") as package_summary_doc:
                         package_summary_doc.write(package_summary)
 
-                    self.logger.info(f"Updated package summary for top-level package: {package}")
+                    logger.info(f"Updated package summary for top-level package: {package}")
                     # Add to checkpoint
                     self.checkpoint_data[PACKAGES_PROCESSED].append(package)
 
@@ -213,22 +224,22 @@ class Project:
 
                     self.save_checkpoint()
             except Exception as e:
-                self.logger.exception(f"Error updating package summary for '{package}'.")
+                logger.exception(f"Error updating package summary for '{package}'.")
 
         # If all processing is complete, delete the checkpoint
-        self.logger.info("Check if we can delete the checkpoint...")
+        logger.info("Check if we can delete the checkpoint...")
         if (
             len(self.checkpoint_data[FILES_PROCESSED]) == len(modified_files)
             and len(self.checkpoint_data[PACKAGES_PROCESSED]) == len(top_level_packages)
             and not self.checkpoint_data[UNPROCESSED]
         ):
             self.delete_checkpoint()
-            self.logger.info("Checkpoint deleted.")
+            logger.info("Checkpoint deleted.")
 
     def onboard(self):
         self.clone_repository()
         self.update_codebase_understanding()
-        self.logger.info("Project onboarded successfully!")
+        logger.info("Project onboarded successfully!")
 
     def create_hierarchical_document(self, root_folder, recurse=True):
         """
@@ -356,9 +367,9 @@ class Project:
             issue = repo.get_issue(number=issue_number)
             # Post the comment
             issue.create_comment(body=comment_body)
-            self.logger.info(f"Comment posted to issue #{issue_number}")
+            logger.info(f"Comment posted to issue #{issue_number}")
         except Exception as e:
-            self.logger.error(f"Error posting comment to GitHub: {e}")
+            logger.error(f"Error posting comment to GitHub: {e}")
             raise
 
     def fetch_issue_comments(self, issue_number):
@@ -376,5 +387,5 @@ class Project:
                 })
             return comments
         except Exception as e:
-            self.logger.error(f"Error fetching issue comments: {e}")
+            logger.error(f"Error fetching issue comments: {e}")
             raise

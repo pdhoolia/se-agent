@@ -1,4 +1,6 @@
 import os
+import logging
+logger = logging.getLogger("se-agent")
 
 from se_agent.llm.api import call_llm_for_task
 from se_agent.llm.model_configuration_manager import TaskName
@@ -56,7 +58,7 @@ def suggest_changes(project: Project, analysis_results: dict, localization_sugge
     ])
 
     # let's log the file_paths that are being added to the prompt
-    project.logger.debug(f"Files being added to the prompt: {[file[0] for file in files]}")
+    logger.debug(f"Files being added to the prompt: {[file[0] for file in files]}")
 
     # let's build the code_files part of the prompt input from files
     code_files = ""
