@@ -1,14 +1,9 @@
-Flask
 openai
 python-dotenv
 pydantic
-PyGithub
 gitpython
-pytest
-pytest-flask
-flask_cors
-langchain
+langchain-core
 langchain-openai
 langchain-ibm
-langchain_milvus
-pandas
+PyGithub
+pyarrow

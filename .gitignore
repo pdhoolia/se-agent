@@ -167,3 +167,5 @@ cython_debug/
 .conda/
 
 .DS_Store
+
+lambda.env
