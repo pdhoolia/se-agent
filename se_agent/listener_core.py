@@ -72,6 +72,11 @@ def process_webhook(data):
     github_token = os.getenv('GITHUB_TOKEN')
     project = Project(github_token, os.getenv('PROJECTS_STORE'), project_info)
 
+    # Ignore issue closed events
+    if data.get('action') == 'closed' and 'issue' in data:
+        print("Ignoring closed issue event")
+        return {'status': 'ignored closed event'}, 200
+
     # Handle issue comment creation event
     if data.get('action') == 'created' and 'comment' in data and 'issue' in data:
         comment_details = data['comment']
