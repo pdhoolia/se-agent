@@ -75,6 +75,9 @@ class Project:
     
     def clone_repository(self):
         """ Clone the repository if it doesn't exist """
+        # Ensure the repository folder exists
+        os.makedirs(self.repo_folder, exist_ok=True)
+
         # Check if the repository is already cloned
         if os.listdir(self.repo_folder):
             logger.info("Repository already cloned.")
