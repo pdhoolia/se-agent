@@ -20,7 +20,7 @@ def load_llm_config():
     config_file_path = os.getenv("LLM_CONFIG_FILE_PATH")
     
     if not config_file_path:
-        raise ValueError("CONFIG_FILE_PATH is not set in the environment variables")
+        raise ValueError("LLM_CONFIG_FILE_PATH is not set in the environment variables")
     
     config = Configuration()
     if config_file_path.endswith(".yaml"):
