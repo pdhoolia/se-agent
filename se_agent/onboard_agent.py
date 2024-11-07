@@ -23,6 +23,10 @@ def onboard_agent():
         print("Environment variables GITHUB_TOKEN and PROJECTS_STORE must be set.")
         return
 
+    # if projects_store folder doesn't exist, create it
+    if not os.path.exists(projects_store):
+        os.makedirs(projects_store)
+
     project_manager = ProjectManager(projects_store)
     project_info = project_manager.get_project(args.repo_full_name)
     
