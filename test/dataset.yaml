@@ -1,0 +1,159 @@
+test_cases:
+  - id: test_case_1
+    title: Project level override for github token
+    filepath: issues/test_case_1.md
+    expected_results:
+      - project
+      - project_info
+      - onboard_agent
+  - id: test_case_2
+    title: Retry LLM call on Rate Limit Error
+    filepath: issues/test_case_2.md
+    expected_results:
+      - retry_with_backoff
+      - api
+  - id: test_case_3
+    title: Handle issue comments as well
+    filepath: issues/test_case_3.md
+    expected_results:
+      - listener_core
+      - issue_analyzer
+      - localizer
+      - change_suggester
+      - project
+  - id: test_case_4
+    title: Update semantic understanding on code push to the main branch
+    filepath: issues/test_case_4.md
+    expected_results:
+      - listener_core
+      - project
+      - file_analyzer
+      - package_summary
+  - id: test_case_5
+    title: API based onboarding for a new project
+    filepath: issues/test_case_5.md
+    expected_results:
+      - listener_core
+      - flask_server
+      - lambda_function
+      - project_manager
+      - project
+  - id: test_case_6
+    title: Move lambda function within the se_agent package structure
+    filepath: issues/test_case_6.md
+    expected_results:
+      - lambda_function
+  - id: test_case_7
+    title: Use structured output for semantic summary generation
+    filepath: issues/test_case_7.md
+    expected_results:
+      - localizer
+      - file_analyzer
+      - package_summary
+      - project
+  - id: test_case_8
+    title: Tool based (no LLM) code structure name generation
+    filepath: issues/test_case_8.md
+    expected_results:
+      - package_summary
+      - project
+  - id: test_case_9
+    title: Retrieval based localization
+    filepath: issues/test_case_9.md
+    expected_results:
+      - localizer
+      - project
+      - api
+      - model_configuration_manager
+  - id: test_case_10
+    title: Checkpoint
+    filepath: issues/test_case_10.md
+    expected_results:
+      - project
+  - id: test_case_11
+    title: More tolerance for package name during file fetch
+    filepath: issues/test_case_11.md
+    expected_results:
+      - project
+  - id: test_case_12
+    title: Override top-n[packages|files] configs at project level
+    filepath: issues/test_case_12.md
+    expected_results:
+      - project_info
+      - localizer
+      - change_suggester
+      - project
+  - id: test_case_13
+    title: Exclude empty files from semantic analysis
+    filepath: issues/test_case_13.md
+    expected_results:
+      - project
+      - file_analyzer
+  - id: test_case_14
+    title: Error while saving a check-point
+    filepath: issues/test_case_14.md
+    expected_results:
+      - project
+  - id: test_case_15
+    title: Error while onboarding a new project
+    filepath: issues/test_case_15.md
+    expected_results:
+      - project
+      - onboard_agent
+      - listener_core
+      - project_manager
+  - id: test_case_16
+    title: Ignore comment if issue state is closed
+    filepath: issues/test_case_16.md
+    expected_results:
+      - listener_core
+  - id: test_case_17
+    title: Long running events
+    filepath: issues/test_case_17.md
+    expected_results:
+      - lambda_function
+      - flask_server
+      - listener_core
+  - id: test_case_18
+    title: allow issues to be labeled off-limit for the agent
+    filepath: issues/test_case_18.md
+    expected_results:
+      - project
+  - id: test_case_19
+    title: decide to respond to an issue
+    filepath: issues/test_case_19.md
+    expected_results:
+      - listener_core
+      - model_configuration_manager
+      - localizer
+      - project
+      - api
+  - id: test_case_20
+    title: domain / project memories
+    filepath: issues/test_case_20.md
+    expected_results:
+      - listener_core
+      - model_configuration_manager
+      - project
+      - localizer
+      - change_suggester
+  - id: test_case_21
+    title: memories api
+    filepath: issues/test_case_21.md
+    expected_results:
+      - flask_server
+      - lambda_function
+      - project
+      - listener_core
+  - id: test_case_22
+    title: proactive creation of package-detail document
+    filepath: issues/test_case_22.md
+    expected_results:
+      - project
+  - id: test_case_23
+    title: proactive creation of package-detail document
+    filepath: issues/test_case_22.md
+    expected_results:
+      - project
+      - localizer
+      - model_configuration_manager

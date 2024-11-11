@@ -1,6 +1,4 @@
-Title: Enhance to handle issue comments as well
-
-Description: Our software engineering agent receives new issue events from GitHub via a web-hook, localizes them via hierarchical documentation it had generated previously while onboarding, to specific packages and files, and then makes recommendations about code changes that may help fix, or enhance the code in accordance with the issue details.
+Our software engineering agent receives new issue events from GitHub via a web-hook, localizes them via hierarchical documentation it had generated previously while onboarding, to specific packages and files, and then makes recommendations about code changes that may help fix, or enhance the code in accordance with the issue details.
 
 We now want to enhance this agent to handle issue comments as well.
 
@@ -24,4 +22,4 @@ Also consider the following:
 
 - Whie we should prevent the agent's comments from triggering any new comment processing, we should use the agent's comment as a part of the conversation to refine previous suggestions, rather than trying to answer th whole thing fresh on every use comment.
 
-- Also like we discussed earlierm, we should use the presence  of `<!-- SE agent -->` to decide the role of the comment, rather than the user (since for testing, we are using the same user for raising the issue and his github token to post as Agent as well.)
+- Also like we discussed earlier, we should use the presence  of `<!-- SE agent -->` to decide the role of the comment, rather than the user (since for testing, we are using the same user for raising the issue and his github token to post as Agent as well.)

@@ -1,0 +1,3 @@
+Localizer, and change suggester components use `top_n_packages` and `top_n_files` global configurations to keep the data the LLM uses in line with the maximum supported inline context size by the model.
+
+We should be able to govern these configurations as the level of project. A large and complex repo may have large packages. Hence the detailed semantic understanding per package may be large. Consequently, it may want to keep the top_n_packages to be used for localizing the issue to specific code files as small. Similarly a project may want to add a smaller number of files for change suggestions depending on size of the files and the model's capacity to handle them.

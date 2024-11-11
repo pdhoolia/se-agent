@@ -1,6 +1,3 @@
-Title: Move lambda function within the se_agent package structure
-
-Description:
 At the moment we have a lambda function wrapper which is outside the core `se_agent` package.
 Does it make sense to move it inside the core package? So it become part of the module itself?
 I suggest we create a sub-package - `lambda` inside `se_agent`, and push `lambda_function.py` there.
@@ -39,4 +36,4 @@ COPY se_agent ${LAMBDA_TASK_ROOT}/se_agent
 CMD [ "lambda_function.handler" ]
 ```
 
-Please suggest how we should change this, if I push `lambda_function.py` into `se_agent.lambda` package?
+We should also change it, if we push `lambda_function.py` into `se_agent.lambda` package?

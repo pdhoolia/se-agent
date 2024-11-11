@@ -1,0 +1,1 @@
+When user clicks on "**Close with comments**", it raises an issue comment event on an open issue, but the issue state is `closed`. Agent should ignore such events, and not respond to it.

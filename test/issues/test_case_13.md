@@ -1,0 +1,1 @@
+Lets not consider empty code files (e.g., some of the `__init__.py`), for generating semantic understanding.
