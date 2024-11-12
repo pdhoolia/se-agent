@@ -147,6 +147,15 @@ class Project:
                     if file.endswith('.py'):
                         relative_path = os.path.relpath(os.path.join(root, file), self.module_src_folder)
                         modified_files.append(relative_path)
+        else:
+            # Filter out non-code files from the modified files list
+            modified_files = [file for file in modified_files if file.endswith('.py')]
+        
+        # If there are no code files to process, return early
+        if not modified_files:
+            logger.info("No code files modified. Skipping update.")
+            return
+
 
         # Update semantic understanding for modified files
         os.makedirs(self.package_details_folder, exist_ok=True)

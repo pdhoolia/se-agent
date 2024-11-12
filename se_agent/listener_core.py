@@ -106,10 +106,14 @@ def process_webhook(data):
                 os.path.relpath(file, project.info.src_folder)
                 for commit in data['commits']
                 for file in commit.get('modified', []) + commit.get('added', [])
-                if file.startswith(project.info.src_folder)
+                if file.startswith(project.info.src_folder) and file.endswith('.py')
             }
-            project.update_codebase_understanding(modified_files)
-            return {'status': 'Codebase understanding updated'}, 200
+            if modified_files:  # Only update if there are code files
+                project.update_codebase_understanding(modified_files)
+                return {'status': 'Codebase understanding updated'}, 200
+            else:
+                logger.info("No code files changed in push event.")
+                return {'status': 'No code files changed'}, 200
         except Exception as e:
             logger.exception("Error updating codebase understanding.")
             return {'status': 'error updating codebase understanding'}, 500
