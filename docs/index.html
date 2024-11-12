@@ -134,7 +134,7 @@
                 });
 
                 const responseData = await response.json();
-                alert(responseData.status);
+                loadingText.textContent = responseData.status; // Update loading text with status
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while onboarding the project.');
