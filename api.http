@@ -1,7 +1,8 @@
-@server_url = https://dhoolia.ngrok.io
+# @server_url = https://dhoolia.ngrok.io
+@server_url = http://ec2-54-90-218-231.compute-1.amazonaws.com
 
 ### Onboard: New Project
-POST {{server_url}}/onboard HTTP/1.1
+PUT {{server_url}}/onboard HTTP/1.1
 Content-Type: application/json
 Accept: application/json
 
