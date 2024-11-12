@@ -73,7 +73,7 @@
             </div>
             <div class="bx--form-item">
                 <label for="server_url" class="bx--label">Agent Server URL</label>
-                <input type="text" class="bx--text-input" id="server_url" name="server_url" placeholder="e.g., https://dhoolia.ngrok.io" required>
+                <input type="text" class="bx--text-input" id="server_url" name="server_url" placeholder="e.g., https://dhoolia.ngrok.io">
             </div>
             <div class="bx--form-item">
                 <div class="bx--btn-set">
@@ -124,7 +124,7 @@
                 spinner.style.display = 'flex';
                 
                 let serverUrl = document.getElementById('server_url').value || 'https://dhoolia.ngrok.io';
-                const response = await fetch(serverUrl, {
+                const response = await fetch(`$serverUrl/onboard`, {
                     method: method,
                     headers: {
                         'Content-Type': 'application/json',
