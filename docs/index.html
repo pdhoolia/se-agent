@@ -124,7 +124,7 @@
                 spinner.style.display = 'flex';
                 
                 let serverUrl = document.getElementById('server_url').value || 'https://dhoolia.ngrok.io';
-                const response = await fetch(`$serverUrl/onboard`, {
+                const response = await fetch(`${serverUrl}/onboard`, {
                     method: method,
                     headers: {
                         'Content-Type': 'application/json',
