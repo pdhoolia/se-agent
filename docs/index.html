@@ -118,10 +118,12 @@
 
             const method = refreshIfExists ? 'PUT' : 'POST';
             const spinner = document.getElementById('spinner');
+            const loadingText = document.getElementById('loading_text');
 
             try {
                 // Show the spinner
                 spinner.style.display = 'flex';
+                loadingText.textContent = 'Onboarding project ...';
                 
                 let serverUrl = document.getElementById('server_url').value || 'https://dhoolia.ngrok.io';
                 const response = await fetch(`${serverUrl}/onboard`, {
