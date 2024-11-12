@@ -1,5 +1,5 @@
 # @server_url = https://dhoolia.ngrok.io
-@server_url = http://ec2-54-90-218-231.compute-1.amazonaws.com
+@server_url = https://dhoolia.com
 
 ### Onboard: New Project
 PUT {{server_url}}/onboard HTTP/1.1
