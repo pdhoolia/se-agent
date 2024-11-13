@@ -1,3 +1,6 @@
+# Demo of the current Agent
+<video src="media/se-agent.mp4" controls></video>
+
 # Vision
 
 An enterprise has a well defined organizational structure. The roles and responsibilities in such an organizational structure are well known. A digitally enabled enterprise empowers the people in those roles digital access and storage for the artifacts they require or produce while carrying out their responsibilities.
