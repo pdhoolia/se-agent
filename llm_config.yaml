@@ -1,4 +1,15 @@
 providers:
+  ollama:
+    default_model: "llama3:8b-instruct-q6_K"
+    tasks:
+      generate_code_summary:
+        max_tokens: 1536
+      generate_package_summary:
+        max_tokens: 512
+      localize:
+        max_tokens: 512
+      generate_suggestions:
+        max_tokens: 3000
   openai:
     default_model: "gpt-4o"
     default_max_tokens: 256

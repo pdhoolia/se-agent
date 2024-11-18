@@ -3,7 +3,8 @@ python-dotenv
 pydantic
 gitpython
 langchain-core
-langchain-openai
 langchain-ibm
+langchain-ollama
+langchain-openai
 PyGithub
 pyarrow

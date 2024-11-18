@@ -40,18 +40,57 @@ def prompt_identify_relevant_packages(issue_analysis, package_summaries):
     # System message along with package summaries to reference, and instructions
     system_message = {
         'role': 'system',
-        'content': f"""You are an AI assistant that helps with software issue localization.
+        'content': """You are an AI assistant that helps with software issue localization.
 
-Following package summaries are available for your reference:
+You understand the issue content, any embedded code snippets, and any related discussion across messages.
+Then based on the package summaries provided, you identify the most relevant packages and return a JSON formatted output as follows:"""
+            + RELEVANT_PACKAGES_FORMAT_INSTRUCTIONS + 
+f"""
+Look at the following example for more guidance:
+
+[EXAMPLE-START]
+
+[PACKAGE-SUMMARIES-START]
+
+# summarization
+
+## Semantic Summary
+The `summarization` package offers tools for summarization
+
+## Contained code structure names
+`summarizer1.py`, `summarizer2.py`, `generate_summary`
+
+# retrieval
+
+## Semantic Summary
+The `retrieval` package offers a multitude of retrievers including keyword based (bm25: tf/idf), and semantic vector search based ...
+
+## Contained code structure names
+`retrieval.bm25`, `bm25_retriever.py`, `retrieve`, `retrieval.vectorized`, `vector_retriever`, `retrieve`
+
+[PACKAGE-SUMMARIES-END]
+
+[ISSUE-START]
+Issue: fix vecotorized retrieval
+
+Description:
+This issue pertains to vectorized retrieval methods in the current system, which need optimization for large datasets.
+[ISSUE-END]
+
+Expected Output:
+```json
+{{
+  "relevant_packages": ["retrieval"]
+}}
+```
+
+[EXAMPLE-END]
+
+Here are the actual package summaries:
 
 [PACKAGE-SUMMARIES-START]
 {package_summaries}
-[PACKAGE-SUMMARIES-END]
-
-You understand the issues raised and discussed by the user.
-Analyze any code snippets provided.
-Based on the package summaries above, identify the packages most relevant to the discussion.
-And finally, return a list of high-level packages (as a JSON array) that you think are most relevant for the issue and discussion.\n\n""" + RELEVANT_PACKAGES_FORMAT_INSTRUCTIONS
+[PACKAGE-SUMMARIES-END]"""
     }
     messages.append(system_message)
 
@@ -68,32 +107,47 @@ And finally, return a list of high-level packages (as a JSON array) that you thi
 
     return messages
 
-def prompt_localize_to_files(issue_analysis, documentation):
+def prompt_localize_to_files(issue_analysis, package_details):
     """ Generates the prompt to localize issue to specific files and functions. """
 
     messages = []
 
     # System message along with relevant package details to reference, and instructions
     system_message = {
-        'role': 'system',
-        'content': f"""You are an AI assistant that specializes in analysing issues, related discussion, and understanding code. You recommend files relevant to the issue and discussion.
+        "role": "system",
+        "content": f"""You are an AI assistant that specializes in localizing issues to related files based on semantic summaries of code packages and files there-in.
 
-Following relevant package details are available for your reference:
+You return the files that are most relevant to the issue in the following JSON format:
 
-[PACKAGE-DETAILS-START]
-{documentation}
-[PACKAGE-DETAILS-END]
+```json
+{{
+  "file_localization_suggestions": [
+    {{
+      "package": "<Fully qualified package name>",
+      "file": "<Name of the Python file>",
+      "confidence": <a floating point number between 0 and 1 with two decimal points indicating the confidence in the suggestion>,
+      "reason": "<An explanation of the relevance of this file for the issue (not to exceed 50 tokens)>"
+    }}
+  ]
+}}
+```
 
-You understand the issues raised and discussed by the user.
-Analyze any code snippets provided.
-Based on the package details above, suggest a list of files that you think are most relevant to the issue and discussion.
-Each localization suggestion should include:
-    - "package": Fully qualified package name.
-    - "file": Name of the Python file.
-    - "confidence": A float between 0 and 1 with two decimal points indicating the confidence you have for this suggestion to be relevant to the issue.
-    - "reason": Explanation of why you think it is relevant (not to exceed 50 tokens).
+Following are the semantic summaries of the files (and their containing packages) that you can refer to:
+---
+{package_details}
+---
 
-Return the JSON array sorted in descending order of confidence.\n\n""" + FILE_LOCALIZATION_SUGGESTIONS_FORMAT_INSTRUCTIONS
+Semantic summaries above are in markdown format:
+  - section headers for packages, sub-packages, and files.
+  - File section header includes the extesion of the file.
+  - package headers don't have any extension.
+  - sub-package and file headers are nested under the package headers.
+  - sub-package headers are qualified by the package headers.
+  - to get the fully qualified package name for a file, just get the package header under which the file is nested.
+
+
+DO NOT TRY TO SOLVE THE ISSUE. JUST LOCALIZE IT TO THE MOST RELEVANT FILES AND RETURN THE `file_localization_suggestions` JSON OBJECT as follows:
+""" + FILE_LOCALIZATION_SUGGESTIONS_FORMAT_INSTRUCTIONS
     }
     messages.append(system_message)
 

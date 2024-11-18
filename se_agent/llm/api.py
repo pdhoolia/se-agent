@@ -6,13 +6,14 @@ from langchain_ibm import WatsonxLLM
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseLanguageModel, BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
-from pydantic import BaseModel
 from langchain_core.messages import (
     HumanMessage,
     SystemMessage,
     AIMessage,
     BaseMessage,
 )
+from langchain_ollama import OllamaLLM
+
 from se_agent.llm.model_configuration_manager import Configuration, TaskName
 from se_agent.llm.retry_with_backoff import retry_with_exponential_backoff
 
@@ -54,6 +55,8 @@ def fetch_llm_for_task(task_name: TaskName, **kwargs) -> Union[BaseLanguageModel
             apikey=os.getenv("WATSONX_APIKEY"),
             params={"decoding_method": "greedy", "max_new_tokens": max_tokens},
         )
+    elif PROVIDER == "ollama":
+        return OllamaLLM(model=model_name, max_tokens=max_tokens, **kwargs)
     else:
         raise ValueError(f"Unsupported LLM provider: {PROVIDER}")
 
@@ -95,7 +98,7 @@ def call_llm_for_task(task_name: TaskName, messages: list, **kwargs):
         if isinstance(llm, BaseChatModel):
             llm = llm.with_structured_output(response_format)
             return llm.invoke(transform_to_langchain_base_chat_model_format(messages))
-        elif isinstance(llm, BaseLanguageModel):
+        elif isinstance(llm, BaseLanguageModel) or PROVIDER in ["watsonx", "ollama"]:
             parser = PydanticOutputParser(pydantic_object=response_format)
             chain = llm | parser
             return chain.invoke(input=transform_to_base_language_model_single_prompt_string(messages))
