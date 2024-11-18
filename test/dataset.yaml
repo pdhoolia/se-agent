@@ -157,3 +157,37 @@ test_cases:
       - project
       - localizer
       - model_configuration_manager
+  - id: test_case_24
+    title: cover all files in the repo (not just code)
+    filepath: issues/test_case_24.md
+    expected_results:
+      - project
+      - localizer
+      - model_configuration_manager
+      - listener_core
+  - id: test_case_25
+    title: Refactor localization
+    filepath: issues/test_case_25.md
+    expected_results:
+      - localizer
+      - project
+      - listener_core
+      - api
+      - model_configuration_manager
+  - id: test_case_26
+    title: "Long-Running API Operations: Onboarding and Push Event Processing"
+    filepath: issues/test_case_26.md
+    expected_results:
+      - flask_server
+      - listener_core
+      - lambda_function
+  - id: test_case_27
+    title: Bring your own model api-key
+    filepath: issues/test_case_27.md
+    expected_results:
+      - project_info
+      - project
+      - model_configuration_manager
+      - api
+      - listener_core
+      - flask_server
