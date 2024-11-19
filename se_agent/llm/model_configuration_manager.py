@@ -13,6 +13,7 @@ class TaskName(Enum):
     GENERATE_REPO_SUMMARY = "generate_repo_summary"
     LOCALIZE = "localize"
     GENERATE_SUGGESTIONS = "generate_suggestions"
+    EMBEDDING = "embedding"
 
 @dataclass
 class ModelConfig:

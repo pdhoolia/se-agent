@@ -10,6 +10,9 @@ providers:
         max_tokens: 512
       generate_suggestions:
         max_tokens: 3000
+      embedding:
+        model_name: "mxbai-embed-large"
+        max_tokens: 2000
   openai:
     default_model: "gpt-4o"
     default_max_tokens: 256
@@ -26,6 +29,9 @@ providers:
       generate_suggestions:
         max_tokens: 3000
         model_name: "gpt-4o"
+      embedding:
+        model_name: "text-embedding-3-large"
+        max_tokens: 2000
   watsonx:
     default_model: "meta-llama/llama-3-405b-instruct"
     default_max_tokens: 256
@@ -38,3 +44,6 @@ providers:
         max_tokens: 512
       generate_suggestions:
         max_tokens: 3000
+      embedding:
+        model_name: "BAAI/bge-large-en"
+        max_tokens: 2000

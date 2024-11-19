@@ -1,18 +1,14 @@
 import os
-
 from typing import Union
 
-from langchain_ibm import WatsonxLLM
-from langchain_openai import ChatOpenAI
+from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel, BaseChatModel
+from langchain_core.messages import (HumanMessage, SystemMessage, AIMessage, BaseMessage,)
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.messages import (
-    HumanMessage,
-    SystemMessage,
-    AIMessage,
-    BaseMessage,
-)
-from langchain_ollama import OllamaLLM
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ibm import WatsonxLLM
+from langchain_ollama import OllamaLLM, OllamaEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from se_agent.llm.model_configuration_manager import Configuration, TaskName
 from se_agent.llm.retry_with_backoff import retry_with_exponential_backoff
@@ -36,11 +32,14 @@ def load_llm_config():
 config = load_llm_config()
 PROVIDER = os.getenv("LLM_PROVIDER_NAME")
 
-def fetch_llm_for_task(task_name: TaskName, **kwargs) -> Union[BaseLanguageModel, BaseChatModel]:
+def fetch_llm_for_task(task_name: TaskName, **kwargs) -> Union[BaseLanguageModel, BaseChatModel, Embeddings]:
     task_config = config.get_task_config(PROVIDER, task_name)
     
     if not task_config:
         raise ValueError(f"No task configuration found for provider: {PROVIDER}")
+    
+    if task_name == TaskName.EMBEDDING:
+        return fetch_embedding_model(task_config.model_name)
     
     model_name = task_config.model_name
     max_tokens = task_config.max_tokens
@@ -59,6 +58,16 @@ def fetch_llm_for_task(task_name: TaskName, **kwargs) -> Union[BaseLanguageModel
         return OllamaLLM(model=model_name, max_tokens=max_tokens, **kwargs)
     else:
         raise ValueError(f"Unsupported LLM provider: {PROVIDER}")
+
+def fetch_embedding_model(model_name: str) -> Embeddings:
+    if PROVIDER == "openai":
+        return OpenAIEmbeddings(model=model_name)
+    elif PROVIDER == "ollama":
+        return OllamaEmbeddings(model=model_name)
+    elif PROVIDER == "huggingface":
+        return HuggingFaceEmbeddings(model_name=model_name)
+    else:
+        raise ValueError(f"Unsupported embedding provider: {PROVIDER}")
 
 def transform_to_langchain_base_chat_model_format(messages):
     """Transforms messages to Langchain chat prompt template format."""

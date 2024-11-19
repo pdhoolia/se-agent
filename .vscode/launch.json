@@ -72,6 +72,17 @@
                 "PYTHONPATH": "${workspaceFolder}"
             },
             "justMyCode": false
-        }
+        },
+        {   "name": "Create vector store",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/se_agent/migrate/create_vector_stores.py",
+            "args": [],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "justMyCode": false
+        },
     ]
 }

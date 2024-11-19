@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Dict, List
 
 class LocalizationStrategy(ABC):
@@ -17,3 +18,11 @@ class LocalizationStrategy(ABC):
             List[str]: A list of relevant filepaths (relative from repo root)
         """
         pass
+
+class LocalizationStrategyType(Enum):
+    HIERARCHICAL = "hierarchical"
+    SEMANTIC_VECTOR_SEARCH = "semantic_vector_search"
+
+class VectorType(Enum):
+    CODE = "code"
+    SEMANTIC_SUMMARY = "semantic_summary"

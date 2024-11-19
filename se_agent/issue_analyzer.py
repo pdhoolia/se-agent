@@ -28,7 +28,8 @@ def analyze_issue(project: Project, issue_details):
 
     # Prepare analysis_results, including the conversation
     analysis_results = {
-        'title': issue_details['title'],  # Keeping the title for any other uses
+        'title': issue_details['title'],
+        'description': issue_details['body'],
         'conversation': conversation
     }
 

@@ -199,3 +199,8 @@ test_cases:
       - localizer
       - project
       - change_suggester
+  - id: test_case_29
+    title: "Migrating existing projects to support semantic search localization"
+    filepath: issues/test_case_29.md
+    expected_results:
+      - project

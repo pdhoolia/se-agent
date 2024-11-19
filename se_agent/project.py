@@ -4,20 +4,26 @@ import json
 import re
 import os
 import logging
-logger = logging.getLogger("se-agent")
 
 from github import Github, Auth
+from langchain_core.embeddings import Embeddings
 
+from se_agent.localize.semantic_vector_search import SemanticVectorSearchLocalization
+from se_agent.llm.api import fetch_llm_for_task
+from se_agent.llm.model_configuration_manager import TaskName
 from se_agent.project_info import ProjectInfo
 from se_agent.repository_analyzer.file_analyzer import generate_semantic_description
 from se_agent.repository_analyzer.package_summary import generate_package_summary
 
+logger = logging.getLogger("se-agent")
+
 FILES_PROCESSED = 'files_processed'
 PACKAGES_PROCESSED = 'packages_processed'
 UNPROCESSED = 'unprocessed'
+VECTOR_STORE_FILENAME = 'vector_store.db'
 
 class Project:
-    def __init__(self, github_token, projects_store, project_info: ProjectInfo):
+    def __init__(self, github_token: str, projects_store: str, project_info: ProjectInfo):
         self.github_token = project_info.github_token or github_token
         self.projects_store = projects_store
         self.info = project_info
@@ -38,6 +44,22 @@ class Project:
 
         # Load checkpoint data if it exists
         self.checkpoint_data = self.load_checkpoint()
+
+        # Vector store setup
+        embeddings = fetch_llm_for_task(TaskName.EMBEDDING)  # Embeddings
+        self.semantic_localizer = SemanticVectorSearchLocalization(self.get_vector_store_uri(), embeddings)  # Localization strategy
+
+    def get_vector_store_uri(self):
+        # if metadata folder doesn't exist, create it
+        if not os.path.exists(self.metadata_folder):
+            os.makedirs(self.metadata_folder, exist_ok=True)
+
+        # if vector db file doesn't exist, create it
+        vector_db_filepath = os.path.join(self.metadata_folder, VECTOR_STORE_FILENAME)
+        if not os.path.exists(vector_db_filepath):
+            open(vector_db_filepath, 'w').close()
+
+        return vector_db_filepath
 
     def load_checkpoint(self):
         if os.path.exists(self.checkpoint_file):
@@ -181,6 +203,8 @@ class Project:
                         os.makedirs(os.path.dirname(file_doc_path), exist_ok=True)
                         with open(file_doc_path, 'w') as f:
                             f.write(summary)
+                        # Add to vector store
+                        self.semantic_localizer.add_document(file_path, summary)
                         logger.info(f"Updated semantic summary for file: {file_path}")
                     else:
                         logger.info(f"File is empty, no summary generated for file: {file_path}")
@@ -383,3 +407,32 @@ class Project:
         except Exception as e:
             logger.error(f"Error fetching issue comments: {e}")
             raise
+
+    def build_vector_store_from_existing_summaries(self):
+        """
+        Build the vector store by reading existing semantic summaries.
+        """
+        # List to store tuples of (filepath, content)
+        files_to_add = []
+        
+        # Iterate over all semantic summary files in the package details folder
+        for root, _, files in os.walk(self.package_details_folder):
+            for file in files:
+                if file.endswith('.md'):
+                    file_path = os.path.join(root, file)
+                    # Compute the relative filepath from the module_src_folder
+                    relative_file_path = os.path.relpath(file_path, self.package_details_folder)
+                    # Remove the .md extension
+                    relative_file_path = relative_file_path[:-3]
+                    # Read the summary content
+                    with open(file_path, 'r') as f:
+                        summary_content = f.read()
+                    # Append to the list
+                    files_to_add.append((relative_file_path, summary_content))
+        
+        # Bulk add documents to the vector store
+        if files_to_add:
+            self.semantic_localizer.add_documents(files_to_add)
+            logger.info(f"Added {len(files_to_add)} documents to the vector store.")
+        else:
+            logger.info("No documents found to add to the vector store.")
