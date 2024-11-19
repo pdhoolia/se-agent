@@ -191,3 +191,11 @@ test_cases:
       - api
       - listener_core
       - flask_server
+  - id: test_case_28
+    title: "Refactor localization for flexibility"
+    filepath: issues/test_case_28.md
+    expected_results:
+      - listener_core
+      - localizer
+      - project
+      - change_suggester

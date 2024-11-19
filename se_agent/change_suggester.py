@@ -1,10 +1,10 @@
 import os
 import logging
+from typing import List
 logger = logging.getLogger("se-agent")
 
 from se_agent.llm.api import call_llm_for_task
 from se_agent.llm.model_configuration_manager import TaskName
-from se_agent.localizer import FileLocalizationSuggestions
 from se_agent.project import Project
 
 
@@ -46,25 +46,22 @@ Based on the issue details and ensuing discussion please suggest code or changes
 
     return messages
 
-def suggest_changes(project: Project, analysis_results: dict, localization_suggestions: FileLocalizationSuggestions) -> str :
+def suggest_changes(project: Project, analysis_results: dict, filepaths: List[str]) -> str :
     """ Suggest code changes """
     # Determine top_n_files from project configuration or default
     top_n_files = project.info.top_n_files if project.info.top_n_files is not None else TOP_N_FILES
 
     # Get the files being suggested
-    files = project.fetch_code_files([
-        (suggestion.package.replace('.', os.sep), suggestion.file)
-        for suggestion in localization_suggestions[:top_n_files]
-    ])
+    file_contents = project.fetch_code_files(filepaths[:top_n_files])
 
     # let's log the file_paths that are being added to the prompt
-    logger.debug(f"Files being added to the prompt: {[file[0] for file in files]}")
+    logger.debug(f"Files being added to the prompt: {filepaths[:top_n_files]}")
 
     # let's build the code_files part of the prompt input from files
     code_files = ""
-    for file_path, file_content in files:
+    for filepath, file_content in zip(filepaths[:top_n_files], file_contents):
         code_files += f"""
-file: {file_path}
+file: {filepath}
 ```
 {file_content}
 ```
@@ -72,7 +69,7 @@ file: {file_path}
 """
 
     # Generate the prompt for change suggestions
-    messages = prompt_generate_change_suggestions(analysis_results, str(localization_suggestions), code_files)
+    messages = prompt_generate_change_suggestions(analysis_results, str(filepaths), code_files)
 
     # Call LLM for change suggestions
     try:

@@ -1,16 +1,20 @@
 import json
-import os
 import logging
-logger = logging.getLogger("se-agent")
+import os
 
-from se_agent.issue_analyzer import analyze_issue
 from se_agent.change_suggester import suggest_changes
-from se_agent.localizer import localize_issue
+from se_agent.issue_analyzer import analyze_issue
+from se_agent.localize.hierarchical import HierarchicalLocalizationStrategy
+from se_agent.localize.localization_strategy import LocalizationStrategy
 from se_agent.project import Project
 from se_agent.project_info import ProjectInfo
 from se_agent.project_manager import ProjectManager
 
+logger = logging.getLogger("se-agent")
+
 IGNORE_TOKEN = "IGNORE"
+TOP_N = int(os.getenv('TOP_N_FILES', 5))
+
 
 def get_project_manager():
     projects_store = os.getenv('PROJECTS_STORE')
@@ -132,20 +136,16 @@ def process_issue_event(project: Project, issue_details, comment_details=None):
         if '<!-- SE Agent -->' in comment_body:
             print("Ignoring agent's own comment")
             return IGNORE_TOKEN
-        
-        # Ignore comments that close the issue
-        closing_keywords = ["fixes", "resolves", "closes"]
-        if any(keyword in comment_body.lower() for keyword in closing_keywords):
-            print("Ignoring comment that closes the issue")
-            return IGNORE_TOKEN
 
+    # TODO: Choose strategy based on environment or project configuration
+    localizationStrategy: LocalizationStrategy = HierarchicalLocalizationStrategy(project)
     # Analyze, localize, and suggest changes for the issue
     try:
         analysis_results = analyze_issue(project, issue_details)
         logger.debug(f"Analysis results: {analysis_results}")
-        localization_results = localize_issue(project, issue_details, analysis_results)
-        logger.debug(f"Localization results: {localization_results}")
-        change_suggestions = suggest_changes(project, analysis_results, localization_results)
+        filepaths = localizationStrategy.localize(issue=analysis_results, top_n=TOP_N)
+        logger.debug(f"Localization results: {filepaths}")
+        change_suggestions = suggest_changes(project, analysis_results, filepaths)
         logger.debug(f"Change suggestions: {change_suggestions}")
     except Exception as e:
         logger.exception("Error processing issue.")

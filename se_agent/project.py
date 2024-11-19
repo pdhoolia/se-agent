@@ -1,3 +1,4 @@
+from typing import List
 import git
 import json
 import re
@@ -339,35 +340,16 @@ class Project:
                 ) + "\n\n"
         return package_details
 
-    def fetch_code_files(self, file_suggestions):
-        """Get the contents of the files suggested by the AI model."""
+    def fetch_code_files(self, filepaths: List[str]):
+        """Get the contents of the files."""
         files = []
-        src_path = self.info.src_folder
-        for package, filename in file_suggestions:
-            # Ensure the package path starts with src_path
-            if not package.startswith(src_path):
-                package_path = os.path.join(src_path, package)
-            else:
-                package_path = package
-
-            # Split the package by os.sep to check the last part of the package
-            package_parts = package.split(os.sep)
-            filename_without_extn, extn = os.path.splitext(filename)
+        for filepath in filepaths:
+            full_filepath = os.path.join(self.repo_folder, filepath)
             
-            # Check if the last part of the package matches the filename (without extn)
-            if package_parts[-1] == filename_without_extn:
-                # The file should be located at x/y/z.extn instead of x/y/z/z.extn
-                file_path = os.path.join(self.repo_folder, package_path + extn)
-                full_file_name = package_path + extn
-            else:
-                # Default behavior
-                file_path = os.path.join(self.repo_folder, package_path, filename)
-                full_file_name = os.path.join(package_path, filename)
-            
-            if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
+            if os.path.exists(full_filepath):
+                with open(full_filepath, 'r') as f:
                     file_content = f.read()
-                    files.append((full_file_name, file_content))
+                    files.append(file_content)
         return files
     
     def post_issue_comment(self, issue_number, comment_body):

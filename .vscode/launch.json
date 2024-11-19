@@ -63,9 +63,9 @@
                 //"qiskit_addon_obp",
                 //"--main_branch", "main",
 
-                "pdhoolia/se-agent-test-repo",
-                "se_agent_test_repo",
-                //"--main_branch", "main",
+                "pdhoolia/se-agent",
+                "se_agent",
+                "--main_branch", "main"
             ],
             "console": "integratedTerminal",
             "env": {
