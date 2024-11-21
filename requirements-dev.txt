@@ -1,15 +1,2 @@
-Flask
-openai
-python-dotenv
-pydantic
-PyGithub
-gitpython
-pytest
 pytest-flask
-flask_cors
-langchain
-langchain-ibm
-langchain_milvus
-langchain-ollama
-langchain-openai
 pandas
