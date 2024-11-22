@@ -5,7 +5,8 @@ import os
 from se_agent.change_suggester import suggest_changes
 from se_agent.issue_analyzer import analyze_issue
 from se_agent.localize.hierarchical import HierarchicalLocalizationStrategy
-from se_agent.localize.localization_strategy import LocalizationStrategy, LocalizationStrategyType
+from se_agent.localize.semantic_vector_search import SemanticVectorSearchLocalizer
+from se_agent.localize.localization_strategy import LocalizationStrategyType
 from se_agent.project import Project
 from se_agent.project_info import ProjectInfo
 from se_agent.project_manager import ProjectManager
@@ -140,7 +141,7 @@ def process_issue_event(project: Project, issue_details, comment_details=None):
 
     # Choose strategy based on environment or project configuration
     if LOCALIZATION_STRATEGY == LocalizationStrategyType.SEMANTIC_VECTOR_SEARCH:
-        localizationStrategy = project.semantic_localizer
+        localizationStrategy = SemanticVectorSearchLocalizer(project.get_vector_store())
     else:
         localizationStrategy = HierarchicalLocalizationStrategy(project)
     # Analyze, localize, and suggest changes for the issue

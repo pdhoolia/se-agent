@@ -6,9 +6,10 @@ import os
 import logging
 
 from github import Github, Auth
-from langchain_core.embeddings import Embeddings
+from langchain_core.vectorstores import VectorStore
+from langchain_core.documents import Document
 
-from se_agent.localize.semantic_vector_search import SemanticVectorSearchLocalization
+from se_agent.util.vector_store_utils import get_or_create_vector_store, DEFAULT_VECTOR_TYPE, VectorType
 from se_agent.llm.api import fetch_llm_for_task
 from se_agent.llm.model_configuration_manager import TaskName
 from se_agent.project_info import ProjectInfo
@@ -45,9 +46,13 @@ class Project:
         # Load checkpoint data if it exists
         self.checkpoint_data = self.load_checkpoint()
 
-        # Vector store setup
-        embeddings = fetch_llm_for_task(TaskName.EMBEDDING)  # Embeddings
-        self.semantic_localizer = SemanticVectorSearchLocalization(self.get_vector_store_uri(), embeddings)  # Localization strategy
+    def get_vector_store(self, collection_name: str = DEFAULT_VECTOR_TYPE) -> VectorStore:
+        # Fetch embeddings (TODO: for the project)
+        embeddings = fetch_llm_for_task(TaskName.EMBEDDING)
+        # Get or create the vector store
+        vector_store = get_or_create_vector_store(embeddings, self.get_vector_store_uri(), collection_name)
+        
+        return vector_store
 
     def get_vector_store_uri(self):
         # if metadata folder doesn't exist, create it
@@ -181,7 +186,9 @@ class Project:
 
 
         # Update semantic understanding for modified files
-        os.makedirs(self.package_details_folder, exist_ok=True)
+        os.makedirs(self.package_details_folder, exist_ok=True)  # where we store semantic descriptions
+        vector_store = self.get_vector_store()  # where we index their vectors
+
         for file_path in modified_files:
             if file_path in self.checkpoint_data[FILES_PROCESSED]:
                 logger.info(f"Skipping already processed file: {file_path}")
@@ -204,7 +211,9 @@ class Project:
                         with open(file_doc_path, 'w') as f:
                             f.write(summary)
                         # Add to vector store
-                        self.semantic_localizer.add_document(file_path, summary)
+                        vector_store.add_documents(
+                            documents=[Document(page_content=summary, metadata={"filepath": file_path})],
+                            ids=[file_path])
                         logger.info(f"Updated semantic summary for file: {file_path}")
                     else:
                         logger.info(f"File is empty, no summary generated for file: {file_path}")
@@ -368,7 +377,7 @@ class Project:
         """Get the contents of the files."""
         files = []
         for filepath in filepaths:
-            full_filepath = os.path.join(self.repo_folder, filepath)
+            full_filepath = os.path.join(self.module_src_folder, filepath)
             
             if os.path.exists(full_filepath):
                 with open(full_filepath, 'r') as f:
@@ -414,6 +423,8 @@ class Project:
         """
         # List to store tuples of (filepath, content)
         files_to_add = []
+        contents = []
+        filepaths = []
         
         # Iterate over all semantic summary files in the package details folder
         for root, _, files in os.walk(self.package_details_folder):
@@ -428,11 +439,19 @@ class Project:
                     with open(file_path, 'r') as f:
                         summary_content = f.read()
                     # Append to the list
-                    files_to_add.append((relative_file_path, summary_content))
+                    contents.append(summary_content)
+                    filepaths.append(relative_file_path)                    
         
         # Bulk add documents to the vector store
-        if files_to_add:
-            self.semantic_localizer.add_documents(files_to_add)
-            logger.info(f"Added {len(files_to_add)} documents to the vector store.")
+        if filepaths:
+            vector_store = self.get_vector_store()
+            vector_store.add_documents(
+                documents=[
+                    Document(page_content=content, metadata={"filepath": filepath})
+                    for content, filepath in zip(contents, filepaths)
+                ],
+                ids=filepaths
+            )
+            logger.info(f"Added {len(filepaths)} documents to the vector store.")
         else:
             logger.info("No documents found to add to the vector store.")

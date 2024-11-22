@@ -204,3 +204,11 @@ test_cases:
     filepath: issues/test_case_29.md
     expected_results:
       - project
+  - id: test_case_30
+    title: "Fix the semantic vector strategy"
+    filepath: issues/test_case_30.md
+    expected_results:
+      - project
+      - listener_core
+      - semantic_vector_search
+      - localization_strategy

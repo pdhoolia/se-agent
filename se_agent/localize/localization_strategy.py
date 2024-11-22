@@ -22,7 +22,3 @@ class LocalizationStrategy(ABC):
 class LocalizationStrategyType(Enum):
     HIERARCHICAL = "hierarchical"
     SEMANTIC_VECTOR_SEARCH = "semantic_vector_search"
-
-class VectorType(Enum):
-    CODE = "code"
-    SEMANTIC_SUMMARY = "semantic_summary"

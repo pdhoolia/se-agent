@@ -3,7 +3,7 @@
 @server_url = http://localhost:3000
 
 ### Onboard: New Project
-POST {{server_url}}/onboard HTTP/1.1
+PUT {{server_url}}/onboard HTTP/1.1
 Content-Type: application/json
 Accept: application/json
 
@@ -32,9 +32,9 @@ Accept: application/json
 {
     "action": "opened",
     "issue": {
-        "number": 23,
-        "title": "Vector Store Migration",
-        "body": "ATM our software engineering agent builds a semantic understanding for each code file in the repository, and stores it as metadata. It then uses those semantic summaries to localize any issues raised on the repository.\nEarlier we were using a hierarchical localization strategy. In that strategy the agent created an inline context for the LLM by aggregating semantic summary files, and then made a completion API call to generate localization suggestions.\n\nWe have recently added support for a new localization strategy based on semantic vector search. In this strategy, in addition to generating semantic summaries for code files and storing them in metadata, the agent also wants to create a vector store that indexes embeddings for those semantic summaries.\n\nBefore releasing the new localization strategy into production, we need to migrate the existing projects to create the vector stores required in support of this strategy. I am assuming we'll need to write a migration script that will list all projects, and for each project populate the vector store with the semantic summaries of all code files in the metadata.",
+        "number": 27,
+        "title": "Fix the semantic vector strategy",
+        "body": "Current implementation of semantic vector strategy seems to have an overly complex design.\n\nProject seems to maintain an instance of semantic vector localization strategy, which seems to manage various semantic vector collections for the project.\nWhile handling issue events, this instance of localization strategy is fetched and used.\nThis seems to be the wrong dependency structure without the right kind of separation of concerns.\n\nFollowing code refactoring is proposed:\n1. Separate the vector store management concern from localization strategy. Let the project be responsible for getting or creating a vector store. \n2. Rather than creating / loading the vector store as a member of the project during its construction, let's get or create it on demand. this will minimize the high memory requirement periods. Further only load the collection that is needed\n3. Let SemanticVectorSearchLocalizer be constructed by injecting the vector store into it. Let it only have the localize method.\n4. The methods to add / delete documents from the vector store are already available on langchain's VectorStore abstraction that we use. There is no point in replicating them once again. While adding documents to vector store (during semantic understanding) let's directly use the VectorStore's add_documents method.",
         "state": "open"
     },
     "repository": {
