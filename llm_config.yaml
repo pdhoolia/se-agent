@@ -19,7 +19,7 @@ providers:
     tasks:
       generate_code_summary:
         max_tokens: 1536
-        model_name: "gpt-4o-mini"
+        model_name: "gpt-4o"
       generate_package_summary:
         max_tokens: 512
         model_name: "gpt-4o"

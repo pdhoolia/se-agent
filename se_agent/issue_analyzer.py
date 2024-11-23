@@ -1,14 +1,26 @@
-# issue_analyzer.py
+"""Module for analyzing GitHub issues and extracting relevant information."""
+
 from se_agent.project import Project
 
 def analyze_issue(project: Project, issue_details):
-    """ Analyzes the issue to extract relevant information, including the conversation thread. """
+    """Analyzes the issue to extract relevant information, including the conversation thread.
+
+    Args:
+        project (Project): The project instance used to fetch issue comments.
+        issue_details (dict): Details of the GitHub issue.
+
+    Returns:
+        dict: A dictionary containing the issue's title, description, and conversation messages.
+    """
     
     # Collect the conversation messages
     conversation = []
 
-    # Include the issue title & body as the first message content
-    conversation.append({'role': 'user', 'content': f'Issue: {issue_details["title"]}\n\nDescription: {issue_details["body"]}'})
+    # Include the issue title and body as the first message content
+    conversation.append({
+        'role': 'user',
+        'content': f'Issue: {issue_details["title"]}\n\nDescription: {issue_details["body"]}'
+    })
 
     # Fetch the comments on the issue
     issue_number = issue_details['number']

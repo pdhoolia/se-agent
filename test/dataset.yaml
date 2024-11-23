@@ -212,3 +212,9 @@ test_cases:
       - listener_core
       - semantic_vector_search
       - localization_strategy
+  - id: test_case_31
+    title: "Allow project level override for `VectorType`"
+    filepath: issues/test_case_31.md
+    expected_results:
+      - project_info
+      - project

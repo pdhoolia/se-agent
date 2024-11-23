@@ -1,3 +1,5 @@
+"""Module for managing GitHub projects, including cloning repositories, updating codebase understanding, and building vector stores."""
+
 from typing import List
 import git
 import json
@@ -24,7 +26,30 @@ UNPROCESSED = 'unprocessed'
 VECTOR_STORE_FILENAME = 'vector_store.db'
 
 class Project:
+    """Represents a GitHub project and provides methods to manage it.
+
+    Attributes:
+        github_token (str): GitHub authentication token.
+        projects_store (str): Path to the projects storage directory.
+        info (ProjectInfo): Information about the project.
+        project_root_folder (str): Root directory for the project.
+        repo_folder (str): Directory where the repository is cloned.
+        metadata_folder (str): Directory for storing metadata.
+        module_src_folder (str): Directory of the source code in the repository.
+        package_details_folder (str): Directory for storing package details.
+        package_summaries_folder (str): Directory for storing package summaries.
+        checkpoint_file (str): Path to the checkpoint file.
+        github (Github): Authenticated GitHub instance.
+        checkpoint_data (dict): Data loaded from the checkpoint file.
+    """
     def __init__(self, github_token: str, projects_store: str, project_info: ProjectInfo):
+        """Initializes the Project instance.
+
+        Args:
+            github_token (str): GitHub authentication token.
+            projects_store (str): Path to the projects storage directory.
+            project_info (ProjectInfo): Information about the project.
+        """
         self.github_token = project_info.github_token or github_token
         self.projects_store = projects_store
         self.info = project_info
@@ -47,6 +72,14 @@ class Project:
         self.checkpoint_data = self.load_checkpoint()
 
     def get_vector_store(self, collection_name: str = DEFAULT_VECTOR_TYPE) -> VectorStore:
+        """Retrieves or creates a vector store for the project.
+
+        Args:
+            collection_name (str, optional): Name of the collection in the vector store. Defaults to DEFAULT_VECTOR_TYPE.
+
+        Returns:
+            VectorStore: The vector store instance.
+        """
         # Fetch embeddings (TODO: for the project)
         embeddings = fetch_llm_for_task(TaskName.EMBEDDING)
         # Get or create the vector store
@@ -55,6 +88,13 @@ class Project:
         return vector_store
 
     def get_vector_store_uri(self):
+        """Gets the URI for the vector store file.
+
+        Ensures the metadata directory and vector store file exist.
+
+        Returns:
+            str: The file path to the vector store database.
+        """
         # if metadata folder doesn't exist, create it
         if not os.path.exists(self.metadata_folder):
             os.makedirs(self.metadata_folder, exist_ok=True)
@@ -67,6 +107,11 @@ class Project:
         return vector_db_filepath
 
     def load_checkpoint(self):
+        """Loads checkpoint data from the checkpoint file if it exists.
+
+        Returns:
+            dict: The loaded checkpoint data.
+        """
         if os.path.exists(self.checkpoint_file):
             with open(self.checkpoint_file, 'r') as f:
                 checkpoint_data = json.load(f)
@@ -86,6 +131,7 @@ class Project:
         return checkpoint_data
 
     def save_checkpoint(self):
+        """Saves the current checkpoint data to the checkpoint file."""
         # Validate data before saving
         if not isinstance(self.checkpoint_data.get(FILES_PROCESSED), list):
             self.checkpoint_data[FILES_PROCESSED] = []
@@ -98,11 +144,15 @@ class Project:
             json.dump(self.checkpoint_data, f)
 
     def delete_checkpoint(self):
+        """Deletes the checkpoint file if it exists."""
         if os.path.exists(self.checkpoint_file):
             os.remove(self.checkpoint_file)
-    
+        
     def clone_repository(self):
-        """ Clone the repository if it doesn't exist """
+        """Clones the repository if it doesn't exist.
+
+        Ensures the repository is added to Git's safe directories.
+        """
         # Ensure the repository folder exists
         os.makedirs(self.repo_folder, exist_ok=True)
 
@@ -147,7 +197,7 @@ class Project:
             raise
 
     def pull_latest_changes(self):
-        """ Pull the latest changes from the main branch """
+        """Pulls the latest changes from the main branch of the repository."""
         logger.info("Pulling latest changes from main branch...")
         try:
             repo = git.Repo(self.repo_folder)
@@ -157,10 +207,14 @@ class Project:
         except Exception as e:
             logger.error(f"Error pulling latest changes: {e}")
             raise
-    
+        
     def update_codebase_understanding(self, modified_files=None):
-        """
-        Update semantic understanding of the codebase by summarizing only modified files.
+        """Updates the semantic understanding of the codebase.
+
+        Summarizes only modified files or all files if none specified.
+
+        Args:
+            modified_files (list, optional): List of modified file paths. If None, all files are processed.
         """
         logger.info("Updating codebase understanding incrementally...")
 
@@ -211,10 +265,11 @@ class Project:
                         with open(file_doc_path, 'w') as f:
                             f.write(summary)
                         # Add to vector store
+                        fp = os.path(self.info.src_folder, file_path)
                         vector_store.add_documents(
-                            documents=[Document(page_content=summary, metadata={"filepath": file_path})],
-                            ids=[file_path])
-                        logger.info(f"Updated semantic summary for file: {file_path}")
+                            documents=[Document(page_content=summary, metadata={"filepath": fp})],
+                            ids=[fp])
+                        logger.info(f"Updated semantic summary for file: {fp}")
                     else:
                         logger.info(f"File is empty, no summary generated for file: {file_path}")
 
@@ -283,27 +338,49 @@ class Project:
             logger.info("Checkpoint deleted.")
 
     def onboard(self):
+        """Performs the initial onboarding of the project.
+
+        Clones the repository and updates the codebase understanding.
+        """
         self.clone_repository()
         self.update_codebase_understanding()
         logger.info("Project onboarded successfully!")
 
     def create_hierarchical_document(self, root_folder, recurse=True):
-        """
-        Create a hierarchical document for a package based on semantic descriptions of individual files.
+        """Creates a hierarchical document for a package based on semantic descriptions.
 
         Args:
             root_folder (str): The root folder containing the semantic descriptions of the package.
+            recurse (bool, optional): Whether to recurse into sub-packages. Defaults to True.
 
         Returns:
             str: A hierarchical document for the entire package.
         """
         def modify_headers(content: str, header_offset: str) -> str:
-            """Prefix all markdown headers with the given headerOffset."""
+            """Prefixes all markdown headers with the given header offset.
+
+            Args:
+                content (str): The content to modify.
+                header_offset (str): The header offset string (e.g., '##').
+
+            Returns:
+                str: The content with modified headers.
+            """
             
             modified_content = re.sub(r'(#+)', lambda match: header_offset + match.group(0), content)
             return modified_content
         
         def build_document(current_folder, level, recurse=True):
+            """Recursively builds the hierarchical document.
+
+            Args:
+                current_folder (str): The current folder being processed.
+                level (int): The current header level.
+                recurse (bool, optional): Whether to recurse into sub-packages. Defaults to True.
+
+            Returns:
+                str: The document content for the current folder.
+            """
             document = ""
             header_prefix = "#" * level
 
@@ -346,6 +423,11 @@ class Project:
         return build_document(root_folder, 1, recurse=recurse)
 
     def fetch_package_summaries(self):
+        """Fetches all package summaries and concatenates them.
+
+        Returns:
+            str: The concatenated package summaries.
+        """
         package_summaries = ""
         for item in os.listdir(self.package_summaries_folder):
             item_path = os.path.join(self.package_summaries_folder, item)
@@ -355,10 +437,11 @@ class Project:
         return package_summaries
 
     def fetch_package_details(self, packages):
-        """
-        Fetches the detailed documentation for the specified packages and returns the content as a string.
+        """Fetches detailed documentation for the specified packages.
+
         Args:
             packages (list): List of package names to fetch details for.
+
         Returns:
             str: The concatenated content of the package details.
         """
@@ -374,19 +457,31 @@ class Project:
         return package_details
 
     def fetch_code_files(self, filepaths: List[str]):
-        """Get the contents of the files."""
+        """Retrieves the contents of the specified code files.
+
+        Args:
+            filepaths (List[str]): List of file paths relative to the module source folder.
+
+        Returns:
+            List[str]: List of file contents.
+        """
         files = []
         for filepath in filepaths:
-            full_filepath = os.path.join(self.module_src_folder, filepath)
+            full_filepath = os.path.join(self.repo_folder, filepath)
             
             if os.path.exists(full_filepath):
                 with open(full_filepath, 'r') as f:
                     file_content = f.read()
                     files.append(file_content)
         return files
-    
+        
     def post_issue_comment(self, issue_number, comment_body):
-        """Post a comment on a GitHub issue."""
+        """Posts a comment on a GitHub issue.
+
+        Args:
+            issue_number (int): The number of the issue.
+            comment_body (str): The body of the comment to post.
+        """
         try:
             # Get the repository
             repo = self.github.get_repo(self.info.repo_full_name)
@@ -400,7 +495,14 @@ class Project:
             raise
 
     def fetch_issue_comments(self, issue_number):
-        """Fetches the comments on an issue."""
+        """Fetches the comments on a GitHub issue.
+
+        Args:
+            issue_number (int): The number of the issue.
+
+        Returns:
+            list: List of dictionaries containing user login and comment body.
+        """
         try:
             repo = self.github.get_repo(self.info.repo_full_name)
             issue = repo.get_issue(number=issue_number)
@@ -418,9 +520,7 @@ class Project:
             raise
 
     def build_vector_store_from_existing_summaries(self):
-        """
-        Build the vector store by reading existing semantic summaries.
-        """
+        """Builds the vector store by reading existing semantic summaries."""
         # List to store tuples of (filepath, content)
         files_to_add = []
         contents = []
@@ -440,8 +540,8 @@ class Project:
                         summary_content = f.read()
                     # Append to the list
                     contents.append(summary_content)
-                    filepaths.append(relative_file_path)                    
-        
+                    filepaths.append(os.path.join(self.info.src_folder, relative_file_path))
+
         # Bulk add documents to the vector store
         if filepaths:
             vector_store = self.get_vector_store()

@@ -1,3 +1,5 @@
+"""Module for processing GitHub webhook events, handling project onboarding, and issue event processing."""
+
 import json
 import logging
 import os
@@ -13,12 +15,21 @@ from se_agent.project_manager import ProjectManager
 
 logger = logging.getLogger("se-agent")
 
-IGNORE_TOKEN = "IGNORE"
-TOP_N = int(os.getenv('TOP_N_FILES', 5))
-LOCALIZATION_STRATEGY = LocalizationStrategyType(os.getenv('LOCALIZATION_STRATEGY', LocalizationStrategyType.HIERARCHICAL))
+IGNORE_TOKEN = "IGNORE"  # Token indicating an event should be ignored
+TOP_N = int(os.getenv('TOP_N_FILES', 5))  # Number of top files to consider during localization
+LOCALIZATION_STRATEGY = LocalizationStrategyType(
+    os.getenv('LOCALIZATION_STRATEGY', LocalizationStrategyType.HIERARCHICAL)
+)  # Localization strategy to use
 
 
 def get_project_manager():
+    """Retrieves the ProjectManager instance.
+
+    Ensures that the projects store directory exists and initializes a ProjectManager.
+
+    Returns:
+        ProjectManager: An instance of the ProjectManager.
+    """
     projects_store = os.getenv('PROJECTS_STORE')
     logger.debug(f"Projects store: {projects_store}")
     if not os.path.exists(projects_store):
@@ -27,9 +38,16 @@ def get_project_manager():
         logger.debug(f"Created: {projects_store}")
     return ProjectManager(projects_store)
 
+
 def onboard_project(data, method):
-    """
-    Handles the onboarding of a new project.
+    """Handles the onboarding of a new project.
+
+    Args:
+        data (dict): The project data used to create a ProjectInfo instance.
+        method (str): The HTTP method used ('POST' or 'PUT').
+
+    Returns:
+        tuple: A tuple containing a status message dictionary and an HTTP status code.
     """
     if not data:
         return {'status': 'Invalid data'}, 400
@@ -57,14 +75,22 @@ def onboard_project(data, method):
         logger.exception("Error during project onboarding.")
         return {'status': 'Error onboarding project', 'error': str(e)}, 500
 
+
 def process_webhook(data):
+    """Processes GitHub webhook events.
+
+    Handles issue creation, issue comment creation, and push events to the main branch.
+
+    Args:
+        data (dict): The webhook payload data from GitHub.
+
+    Returns:
+        tuple: A tuple containing a status message dictionary and an HTTP status code.
     """
-    Processes GitHub webhook events.
-    """
-    # pretty print the data received in a well formatted way
+    # Pretty print the received webhook payload
     print(json.dumps(data, indent=4))
 
-    # get project information
+    # Get project information from the webhook payload
     repo_full_name = data.get('repository').get('full_name')
     if not repo_full_name:
         return {'status': 'repository not found in payload'}, 400
@@ -74,7 +100,7 @@ def process_webhook(data):
 
     if project_info is None:
         return {'status': 'project not onboarded'}, 404
-    
+
     github_token = os.getenv('GITHUB_TOKEN')
     project = Project(github_token, os.getenv('PROJECTS_STORE'), project_info)
 
@@ -105,7 +131,7 @@ def process_webhook(data):
         else:
             return {'status': 'error processing issue'}, 500
 
-    # Handle push event to master branch
+    # Handle push event to main branch
     if data.get('ref') == f'refs/heads/{project.info.main_branch}' and data.get('commits'):
         try:
             modified_files = {
@@ -126,25 +152,36 @@ def process_webhook(data):
 
     return {'status': 'ignored event'}, 200
 
+
 def process_issue_event(project: Project, issue_details, comment_details=None):
+    """Processes new issues and issue comments.
+
+    Analyzes the issue, localizes relevant code, and suggests changes.
+
+    Args:
+        project (Project): The project instance.
+        issue_details (dict): Details of the GitHub issue.
+        comment_details (dict, optional): Details of the comment if applicable.
+
+    Returns:
+        str or None: The change suggestions if successful, IGNORE_TOKEN if ignored, or None if an error occurred.
     """
-    Processes new issues and issue comments.
-    """
-    # Check if the comment is made by the agent itself
+    # Check if the comment is made by the agent itself to prevent infinite loops
     if comment_details:
         comment_body = comment_details.get('body', '')
-        
+
         # Ignore comments that are from the agent itself
         if '<!-- SE Agent -->' in comment_body:
             print("Ignoring agent's own comment")
             return IGNORE_TOKEN
 
-    # Choose strategy based on environment or project configuration
+    # Choose localization strategy based on environment or project configuration
     if LOCALIZATION_STRATEGY == LocalizationStrategyType.SEMANTIC_VECTOR_SEARCH:
         localizationStrategy = SemanticVectorSearchLocalizer(project.get_vector_store())
     else:
         localizationStrategy = HierarchicalLocalizationStrategy(project)
-    # Analyze, localize, and suggest changes for the issue
+
+    # Analyze the issue, localize relevant code files, and generate change suggestions
     try:
         analysis_results = analyze_issue(project, issue_details)
         logger.debug(f"Analysis results: {analysis_results}")
@@ -156,12 +193,12 @@ def process_issue_event(project: Project, issue_details, comment_details=None):
         logger.exception("Error processing issue.")
         return None
 
-    # Get the issue number
+    # Get the issue number from the issue details
     issue_number = issue_details['number']
 
     # Post the change suggestions as a comment on the GitHub issue
     try:
-        # Include the special marker to identify agent's own comments
+        # Include a special marker to identify the agent's own comments
         agent_comment = f"<!-- SE Agent -->\n{change_suggestions}"
         project.post_issue_comment(issue_number, agent_comment)
     except Exception as e:
