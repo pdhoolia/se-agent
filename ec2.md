@@ -322,3 +322,41 @@ Amazon Linux comes with python 3.9 pre-installed. To install python 3.12, we nee
     ```bash
     sudo journalctl -u gunicorn -n 100
     ```
+
+## Out of Memory Error
+
+We started with `t4g.micro` template with 8 GB of storage. Semantic vector search feature, with its need to load a large embedding model (e.g., when using huggingface based embedding models), leads to larger memory consumption. Our instance started running out of memory. Here's what we did to fix it:
+
+1. Checked the disk & swap space
+
+    ```bash
+    df -h
+    free -h
+    ```
+
+2. Our instance was almost out of disk space. We cleaned up some space by removing unnecessary files
+
+    ```bash
+    sudo rm -rf /tmp/*
+    ```
+
+3. We also added more storage to the instance
+
+    First, we added more storage to the instance from the AWS console
+    ![Instance storage](media/ec2-instance-storage.png)
+
+    Then, we run the following commands on our instance to resize the partition and filesystem to use the added storage
+
+    ```bash
+    sudo growpart /dev/nvme0n1 1
+    sudo resize2fs /dev/nvme0n1p1
+    ```
+
+4. `free -h` also indicated that we had no swap space (which provides extra filesystem space for the kernel when physical memory is full). We added a 1GB swap space to our instance as follows:
+
+    ```bash
+    sudo fallocate -l 1G /swapfile
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    ```
