@@ -1,9 +1,11 @@
+"""Manages project level configurations and settings. Agent configurations that may be overridden at project level are declared here."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
 @dataclass
 class ProjectInfo:
-    """Represents project information.
+    """Represents project information, configurations, and settings.
 
     Attributes:
         repo_full_name (str): The full repository name (e.g., 'conversational-ai/se-agent').
