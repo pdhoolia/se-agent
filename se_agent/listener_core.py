@@ -21,6 +21,7 @@ LOCALIZATION_STRATEGY = LocalizationStrategyType(
     os.getenv('LOCALIZATION_STRATEGY', LocalizationStrategyType.HIERARCHICAL)
 )  # Localization strategy to use
 
+LOG_MSG_LENGTH = 50  # Maximum length of log messages
 
 def get_project_manager():
     """Retrieves the ProjectManager instance.
@@ -87,11 +88,13 @@ def process_webhook(data):
     Returns:
         tuple: A tuple containing a status message dictionary and an HTTP status code.
     """
-    # Pretty print the received webhook payload
-    print(json.dumps(data, indent=4))
+    # Log relevant parts of the webhook payload
+    repo_full_name = data.get('repository', {}).get('full_name', 'N/A')
+    action = data.get('action', 'N/A')
+    issue_number = data.get('issue', {}).get('number', 'N/A')
+    logger.debug(f"Webhook event received for repo: {repo_full_name}, action: {action}, issue number: {issue_number}")
 
     # Get project information from the webhook payload
-    repo_full_name = data.get('repository').get('full_name')
     if not repo_full_name:
         return {'status': 'repository not found in payload'}, 400
 
@@ -105,13 +108,13 @@ def process_webhook(data):
     project = Project(github_token, os.getenv('PROJECTS_STORE'), project_info)
 
     # Handle issue comment creation event
-    if data.get('action') == 'created' and 'comment' in data and 'issue' in data:
+    if action == 'created' and 'comment' in data and 'issue' in data:
         comment_details = data['comment']
         issue_details = data['issue']
+        logger.debug(f"Processing comment with ID: {comment_details.get('id', 'N/A')} on issue number: {issue_number} with state: {issue_details.get('state', 'N/A')}")
 
         # Ignore comments on closed issues
         if issue_details.get('state') == 'closed':
-            print("Ignoring comment on closed issue")
             return {'status': 'ignored comment on closed issue'}, 200
 
         result = process_issue_event(project, issue_details, comment_details)
@@ -124,6 +127,7 @@ def process_webhook(data):
 
     # Handle issue creation event
     if data.get('action') == 'opened' and 'issue' in data:
+        logger.debug(f"Processing new issue: {issue_number}")
         issue_details = data['issue']
         result = process_issue_event(project, issue_details)
         if result is not None:
@@ -140,6 +144,8 @@ def process_webhook(data):
                 for file in commit.get('modified', []) + commit.get('added', [])
                 if file.startswith(project.info.src_folder) and file.endswith('.py')
             }
+            logger.debug(f"Modified/Added files: {list(modified_files)}")
+
             if modified_files:  # Only update if there are code files
                 project.update_codebase_understanding(modified_files)
                 return {'status': 'Codebase understanding updated'}, 200
@@ -172,7 +178,7 @@ def process_issue_event(project: Project, issue_details, comment_details=None):
 
         # Ignore comments that are from the agent itself
         if '<!-- SE Agent -->' in comment_body:
-            print("Ignoring agent's own comment")
+            logger.debug("Ignoring agent's own comment")
             return IGNORE_TOKEN
 
     # Choose localization strategy based on environment or project configuration
@@ -184,11 +190,13 @@ def process_issue_event(project: Project, issue_details, comment_details=None):
     # Analyze the issue, localize relevant code files, and generate change suggestions
     try:
         analysis_results = analyze_issue(project, issue_details)
-        logger.debug(f"Analysis results: {analysis_results}")
+        logger.debug(f"Title: {analysis_results['title'][:LOG_MSG_LENGTH]}{'...' if len(analysis_results['title']) > LOG_MSG_LENGTH else ''}")
+        logger.debug(f"Description: {analysis_results['description'][:LOG_MSG_LENGTH]}{'...' if len(analysis_results['description']) > LOG_MSG_LENGTH else ''}")
+        logger.debug(f"Conversation length: {len(analysis_results['conversation'])}")
         filepaths = localizationStrategy.localize(issue=analysis_results, top_n=TOP_N)
         logger.debug(f"Localization results: {filepaths}")
         change_suggestions = suggest_changes(project, analysis_results, filepaths)
-        logger.debug(f"Change suggestions: {change_suggestions}")
+        logger.debug(f"Change suggestions: {change_suggestions[:LOG_MSG_LENGTH]}{'...' if len(change_suggestions) > LOG_MSG_LENGTH else ''}")
     except Exception as e:
         logger.exception("Error processing issue.")
         return None

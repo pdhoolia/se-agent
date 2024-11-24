@@ -1,10 +1,13 @@
 """Module for managing projects, including loading, saving, adding, and retrieving project information."""
 
 import json
+import logging
 import os
 from typing import List, Optional
 
 from se_agent.project import ProjectInfo
+
+logger = logging.getLogger("se-agent")
 
 class ProjectManager:
     """Manages projects by loading from and saving to a JSON file.
@@ -60,11 +63,11 @@ class ProjectManager:
             project_info (ProjectInfo): The project information to add.
         """
         if self.get_project(project_info.repo_full_name):
-            print(f"Project '{project_info.repo_full_name}' already exists.")
+            logger.debug(f"Project '{project_info.repo_full_name}' already exists.")
             return
         self.projects.append(project_info)
         self._save_projects()
-        print(f"Added project '{project_info.repo_full_name}' to projects list.")
+        logger.debug(f"Added project '{project_info.repo_full_name}' to projects list.")
 
     def get_project(self, repo_full_name: str) -> Optional[ProjectInfo]:
         """Retrieves a project by its repository full name.

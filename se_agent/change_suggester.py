@@ -70,9 +70,9 @@ def suggest_changes(project: Project, analysis_results: dict, filepaths: List[st
 
     # Fetch contents of the suggested files
     file_contents = project.fetch_code_files(filepaths[:top_n_files])
-
-    # Log the file paths being added to the prompt
-    logger.debug(f"Files being added to the prompt: {filepaths[:top_n_files]}")
+    # if file_contents is empty, or None, let's error log it
+    if not file_contents:
+        logger.error(f"Error: No file contents found for the files: {filepaths[:top_n_files]}")
 
     # Build the code_files part of the prompt from the file contents
     code_files = ""
@@ -92,7 +92,7 @@ file: {filepath}
             messages=messages
         ).content
     except Exception as e:
-        print(f"Error calling LLM for change suggestions: {e}")
+        logger.exception(f"Error calling LLM for change suggestions: {e}")
         return None
 
     return change_suggestions_response

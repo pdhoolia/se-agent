@@ -1,6 +1,10 @@
 """Module for analyzing GitHub issues and extracting relevant information."""
 
+import logging
+
 from se_agent.project import Project
+
+logger = logging.getLogger("se-agent")
 
 def analyze_issue(project: Project, issue_details):
     """Analyzes the issue to extract relevant information, including the conversation thread.
@@ -35,7 +39,7 @@ def analyze_issue(project: Project, issue_details):
             # Append the comment to the conversation
             conversation.append({'role': role, 'content': comment['body']})
     except Exception as e:
-        print(f"Error fetching comments: {e}")
+        logger.exception(f"Error fetching comments: {e}")
         # Proceed with just the issue title and body
 
     # Prepare analysis_results, including the conversation
