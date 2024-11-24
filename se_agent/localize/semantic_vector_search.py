@@ -35,8 +35,13 @@ class SemanticVectorSearchLocalizer(LocalizationStrategy):
         Returns:
             List[str]: A list of file paths corresponding to the most relevant code files.
         """
-        # Construct the query by combining the issue title and description
-        query = f"{issue['title']}: {issue['description']}"
+        # join user role messages in issue['conversation'] to form the query
+        query = '\n\n'.join([
+            msg['content']
+            for msg in issue['conversation']
+            if msg['role'] == 'user'
+        ])
+
         # Perform a similarity search in the vector store
         results = self.vector_store.similarity_search(query, k=top_n)
         # Extract and return the file paths from the search results

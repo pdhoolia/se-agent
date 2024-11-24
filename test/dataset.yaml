@@ -218,3 +218,8 @@ test_cases:
     expected_results:
       - project_info
       - project
+  - id: test_case_32
+    title: "Use issue conversation during semantic vector search"
+    filepath: issues/test_case_32.md
+    expected_results:
+      - semantic_vector_search

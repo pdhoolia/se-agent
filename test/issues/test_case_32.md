@@ -1,0 +1,3 @@
+ATM semantic vector search based localization strategy uses only the issue title, and description as it formulates the query for semantic vector search. It ignores the subsequent comments in the issue from the process of formulating the query. This may impact the localization quality as the comments may have crucial user input or corrections useful for localization.
+
+Let's discuss and implement improvements for this.
