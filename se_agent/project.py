@@ -265,7 +265,7 @@ class Project:
                         with open(file_doc_path, 'w') as f:
                             f.write(summary)
                         # Add to vector store
-                        fp = os.path(self.info.src_folder, file_path)
+                        fp = os.path.join(self.info.src_folder, file_path)
                         vector_store.add_documents(
                             documents=[Document(page_content=summary, metadata={"filepath": fp})],
                             ids=[fp])
