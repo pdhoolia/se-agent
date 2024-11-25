@@ -32,6 +32,7 @@ def migrate_existing_projects():
             # Initialize the project and build its vector store
             project = Project(github_token, projects_store, project_info)
             project.build_vector_store_from_existing_summaries()
+            project.build_vector_store_from_code_files()
             logger.info(f"Successfully migrated project {project_info.repo_full_name}.")
         except Exception as e:
             # Log any errors encountered during migration

@@ -533,8 +533,6 @@ class Project:
 
     def build_vector_store_from_existing_summaries(self):
         """Builds the vector store by reading existing semantic summaries."""
-        # List to store tuples of (filepath, content)
-        files_to_add = []
         contents = []
         filepaths = []
         
@@ -543,7 +541,7 @@ class Project:
             for file in files:
                 if file.endswith('.md'):
                     file_path = os.path.join(root, file)
-                    # Compute the relative filepath from the module_src_folder
+                    # Compute the relative filepath from the package_details_folder
                     relative_file_path = os.path.relpath(file_path, self.package_details_folder)
                     # Remove the .md extension
                     relative_file_path = relative_file_path[:-3]
@@ -556,7 +554,40 @@ class Project:
 
         # Bulk add documents to the vector store
         if filepaths:
-            vector_store = self.get_vector_store()
+            vector_store = self.get_vector_store(VectorType.SEMANTIC_SUMMARY.value)
+            vector_store.add_documents(
+                documents=[
+                    Document(page_content=content, metadata={"filepath": filepath})
+                    for content, filepath in zip(contents, filepaths)
+                ],
+                ids=filepaths
+            )
+            logger.info(f"Added {len(filepaths)} documents to the vector store.")
+        else:
+            logger.info("No documents found to add to the vector store.")
+
+    def build_vector_store_from_code_files(self):
+        """Builds the code vector store"""
+        contents = []
+        filepaths = []
+        
+        # Iterate over all code files in the module src folder
+        for root, _, files in os.walk(self.module_src_folder):
+            for file in files:
+                if file.endswith('.py'):
+                    file_path = os.path.join(root, file)
+                    # Compute the relative filepath from the module_src_folder
+                    relative_file_path = os.path.relpath(file_path, self.module_src_folder)
+                    # Read the code file content
+                    with open(file_path, 'r') as f:
+                        code = f.read()
+                    # Append to the list
+                    contents.append(code)
+                    filepaths.append(os.path.join(self.info.src_folder, relative_file_path))
+
+        # Bulk add documents to the vector store
+        if filepaths:
+            vector_store = self.get_vector_store(VectorType.CODE.value)
             vector_store.add_documents(
                 documents=[
                     Document(page_content=content, metadata={"filepath": filepath})
