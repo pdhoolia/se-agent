@@ -1,4 +1,4 @@
-"""Module for generating semantic descriptions of Python files using LLM."""
+"""Module for generating semantic descriptions of Code using LLM."""
 
 import os
 from se_agent.llm.api import call_llm_for_task
@@ -37,22 +37,15 @@ List of classes, functions, and other structures in the file with a brief semant
 """
     return prompt
 
-def generate_semantic_description(filepath):
+def generate_semantic_description(code):
     """
-    Generate a semantic description for a code file using LLM.
+    Generate a semantic description for code using LLM.
         Args:
-        filepath (str): Path to the file.
+        code (str): code.
 
     Returns:
-        str or None: The generated semantic description in markdown format, or None if the file is empty.
+        str: The generated semantic description in markdown format
     """
-    # Check if the file is empty
-    if os.path.getsize(filepath) == 0:
-        return None
-
-    with open(filepath, 'r') as file:
-        code = file.read()
-
     # Generate the prompt for the LLM
     prompt = prompt_generate_semantic_description(code)
 

@@ -15,6 +15,7 @@ class ProjectInfo:
         main_branch (Optional[str]): The main branch name (e.g., 'master'). Defaults to 'main'.
         top_n_packages (Optional[int]): Custom top_n_packages for the project. Defaults to None.
         top_n_files (Optional[int]): Custom top_n_files for the project. Defaults to None.
+        preferred_vector_type (str): The preferred vector type for the project. Defaults to DEFAULT_VECTOR_TYPE.
     """
     repo_full_name: str
     src_folder: str
@@ -23,3 +24,4 @@ class ProjectInfo:
     main_branch: Optional[str] = field(default="main")
     top_n_packages: Optional[int] = field(default=None)
     top_n_files: Optional[int] = field(default=None)
+    preferred_vector_type: Optional[str] = field(default=None)

@@ -71,7 +71,7 @@ class Project:
         # Load checkpoint data if it exists
         self.checkpoint_data = self.load_checkpoint()
 
-    def get_vector_store(self, collection_name: str = DEFAULT_VECTOR_TYPE) -> VectorStore:
+    def get_vector_store(self, collection_name: str = None) -> VectorStore:
         """Retrieves or creates a vector store for the project.
 
         Args:
@@ -82,6 +82,8 @@ class Project:
         """
         # Fetch embeddings (TODO: for the project)
         embeddings = fetch_llm_for_task(TaskName.EMBEDDING)
+        # use either the specified one, or the preferred one for the project, or the default
+        collection_name = collection_name or self.info.preferred_vector_type or DEFAULT_VECTOR_TYPE
         # Get or create the vector store
         vector_store = get_or_create_vector_store(embeddings, self.get_vector_store_uri(), collection_name)
         
@@ -241,7 +243,8 @@ class Project:
 
         # Update semantic understanding for modified files
         os.makedirs(self.package_details_folder, exist_ok=True)  # where we store semantic descriptions
-        vector_store = self.get_vector_store()  # where we index their vectors
+        semantic_summaries_vector_store = self.get_vector_store(VectorType.SEMANTIC_SUMMARY.value)
+        code_files_vector_store = self.get_vector_store(VectorType.CODE.value)
 
         for file_path in modified_files:
             if file_path in self.checkpoint_data[FILES_PROCESSED]:
@@ -258,20 +261,29 @@ class Project:
                     top_level_package = self.info.src_folder
 
                 try:
-                    summary = generate_semantic_description(full_file_path)
-                    if summary is not None:
+                    with open(full_file_path, 'r') as file:
+                        code = file.read()
+
+                    if code.strip():
+                        summary = generate_semantic_description(code)
                         file_doc_path = os.path.join(self.package_details_folder, file_path + ".md")
                         os.makedirs(os.path.dirname(file_doc_path), exist_ok=True)
                         with open(file_doc_path, 'w') as f:
                             f.write(summary)
-                        # Add to vector store
                         fp = os.path.join(self.info.src_folder, file_path)
-                        vector_store.add_documents(
+                        logger.info(f"Updated semantic summary for file: {fp}")
+                        # Add to vector store
+                        code_files_vector_store.add_documents(
+                            documents=[Document(page_content=code, metadata={"filepath": fp})],
+                            ids=[fp]
+                        )
+                        logger.info(f"Added code file to code vector store: {fp}")
+                        semantic_summaries_vector_store.add_documents(
                             documents=[Document(page_content=summary, metadata={"filepath": fp})],
                             ids=[fp])
-                        logger.info(f"Updated semantic summary for file: {fp}")
+                        logger.info(f"Added semantic summary to code vector store: {fp}")
                     else:
-                        logger.info(f"File is empty, no summary generated for file: {file_path}")
+                        logger.info(f"Skipped empty file: {file_path}")
 
                     # Mark the file as processed
                     self.checkpoint_data[FILES_PROCESSED].append(file_path)
