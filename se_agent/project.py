@@ -1,6 +1,6 @@
 """Module for managing GitHub projects, including cloning repositories, updating codebase understanding, and building vector stores."""
 
-from typing import List
+from typing import List, Tuple
 import git
 import json
 import re
@@ -9,20 +9,26 @@ import logging
 
 from github import Github, Auth
 from langchain_core.vectorstores import VectorStore
-from langchain_core.documents import Document
 
-from se_agent.util.vector_store_utils import get_or_create_vector_store, DEFAULT_VECTOR_TYPE, VectorType
 from se_agent.llm.api import fetch_llm_for_task
 from se_agent.llm.model_configuration_manager import TaskName
 from se_agent.project_info import ProjectInfo
 from se_agent.repository_analyzer.file_analyzer import generate_semantic_description
 from se_agent.repository_analyzer.package_summary import generate_package_summary
+from se_agent.util.vector_store_utils import (
+    get_vector_store,
+    create_or_update_vector_store,
+    add_documents, 
+    DEFAULT_VECTOR_TYPE, 
+    VectorType
+)
 
 logger = logging.getLogger("se-agent")
 
 FILES_PROCESSED = 'files_processed'
 PACKAGES_PROCESSED = 'packages_processed'
-UNPROCESSED = 'unprocessed'
+UNPROCESSED_FILES = 'unprocessed_files'
+UNPROCESSED_PACKAGES = 'unprocessed_packages'
 VECTOR_STORE_FILENAME = 'vector_store.db'
 
 class Project:
@@ -71,7 +77,14 @@ class Project:
         # Load checkpoint data if it exists
         self.checkpoint_data = self.load_checkpoint()
 
-    def get_vector_store(self, collection_name: str = None) -> VectorStore:
+    def get_github_instance(self) -> Github:
+        """Returns an authenticated Github instance."""
+        if self.info.api_url:
+            return Github(base_url=f"{self.info.api_url}", login_or_token=self.github_token)
+        else:
+            return Github(auth=Auth.Token(self.github_token))
+
+    def get_vector_store(self, prefix: str = None) -> VectorStore:
         """Retrieves or creates a vector store for the project.
 
         Args:
@@ -83,13 +96,13 @@ class Project:
         # Fetch embeddings (TODO: for the project)
         embeddings = fetch_llm_for_task(TaskName.EMBEDDING)
         # use either the specified one, or the preferred one for the project, or the default
-        collection_name = collection_name or self.info.preferred_vector_type or DEFAULT_VECTOR_TYPE
+        prefix = prefix or self.info.preferred_vector_type or DEFAULT_VECTOR_TYPE
         # Get or create the vector store
-        vector_store = get_or_create_vector_store(embeddings, self.get_vector_store_uri(), collection_name)
+        vector_store = get_vector_store(embeddings, self.get_vector_store_uri(prefix))
         
         return vector_store
 
-    def get_vector_store_uri(self):
+    def get_vector_store_uri(self, prefix: str = None) -> str:
         """Gets the URI for the vector store file.
 
         Ensures the metadata directory and vector store file exist.
@@ -102,7 +115,7 @@ class Project:
             os.makedirs(self.metadata_folder, exist_ok=True)
 
         # if vector db file doesn't exist, create it
-        vector_db_filepath = os.path.join(self.metadata_folder, VECTOR_STORE_FILENAME)
+        vector_db_filepath = os.path.join(self.metadata_folder, f"{prefix}_{VECTOR_STORE_FILENAME}" if prefix else VECTOR_STORE_FILENAME)
         if not os.path.exists(vector_db_filepath):
             open(vector_db_filepath, 'w').close()
 
@@ -118,11 +131,15 @@ class Project:
             with open(self.checkpoint_file, 'r') as f:
                 checkpoint_data = json.load(f)
         else:
-            checkpoint_data = {FILES_PROCESSED: [], PACKAGES_PROCESSED: [], UNPROCESSED: {}}
+            checkpoint_data = {FILES_PROCESSED: [], PACKAGES_PROCESSED: [], UNPROCESSED_FILES: {}, UNPROCESSED_PACKAGES: {}}
 
-        # Ensure unprocessed is initialized as a dictionary if missing
-        if UNPROCESSED not in checkpoint_data:
-            checkpoint_data[UNPROCESSED] = {}
+        # Ensure unprocessed_files is initialized as a dictionary if missing
+        if UNPROCESSED_FILES not in checkpoint_data:
+            checkpoint_data[UNPROCESSED_FILES] = {}
+
+        # Ensure unprocessed_packages is initialized as a dictionary if missing
+        if UNPROCESSED_FILES not in checkpoint_data:
+            checkpoint_data[UNPROCESSED_FILES] = {}
 
         # Ensure FILES_PROCESSED and PACKAGES_PROCESSED are lists
         if not isinstance(checkpoint_data.get(FILES_PROCESSED), list):
@@ -139,8 +156,10 @@ class Project:
             self.checkpoint_data[FILES_PROCESSED] = []
         if not isinstance(self.checkpoint_data.get(PACKAGES_PROCESSED), list):
             self.checkpoint_data[PACKAGES_PROCESSED] = []
-        if not isinstance(self.checkpoint_data.get(UNPROCESSED), dict):
-            self.checkpoint_data[UNPROCESSED] = {}
+        if not isinstance(self.checkpoint_data.get(UNPROCESSED_FILES), dict):
+            self.checkpoint_data[UNPROCESSED_FILES] = {}
+        if not isinstance(self.checkpoint_data.get(UNPROCESSED_PACKAGES), dict):
+            self.checkpoint_data[UNPROCESSED_PACKAGES] = {}
 
         with open(self.checkpoint_file, 'w') as f:
             json.dump(self.checkpoint_data, f)
@@ -150,7 +169,7 @@ class Project:
         if os.path.exists(self.checkpoint_file):
             os.remove(self.checkpoint_file)
         
-    def clone_repository(self):
+    def clone_repository(self, requires_safe_directory: bool = True, requires_auth: bool = True):
         """Clones the repository if it doesn't exist.
 
         Ensures the repository is added to Git's safe directories.
@@ -161,36 +180,39 @@ class Project:
         # Check if the repository is already cloned
         if os.listdir(self.repo_folder):
             logger.info("Repository already cloned.")
-            git_cmd = git.cmd.Git()
-            try:
-                safe_directories = git_cmd.config('--global', '--get-all', 'safe.directory').splitlines()
-            except git.GitCommandError:
-                # If the command fails, assume no safe directories are set
-                safe_directories = []
-            # Add to safe directories if not already present
-            if self.repo_folder not in safe_directories:
-                git_cmd.config('--global', '--add', 'safe.directory', self.repo_folder)
-                logger.info(f"Safe directory added: {self.repo_folder}")
+            if requires_safe_directory:
+                git_cmd = git.cmd.Git()
+                try:
+                    safe_directories = git_cmd.config('--global', '--get-all', 'safe.directory').splitlines()
+                except git.GitCommandError:
+                    # If the command fails, assume no safe directories are set
+                    safe_directories = []
+                # Add to safe directories if not already present
+                if self.repo_folder not in safe_directories:
+                    git_cmd.config('--global', '--add', 'safe.directory', self.repo_folder)
+                    logger.info(f"Safe directory added: {self.repo_folder}")
             return
-
-        # Clone the repository
-        logger.info(f"Cloning repository '{self.info.repo_full_name}'...")
         
         try:
-            repo = self.github.get_repo(self.info.repo_full_name)
+            if requires_auth:
+                github = self.get_github_instance()
+                repo = github.get_repo(self.info.repo_full_name)
+                clone_url = repo.clone_url
+                clone_url = clone_url.replace('https://', f'https://{self.github_token}@')
+            else:
+                clone_url = f"https://github.com/{self.info.repo_full_name}.git"
 
             # Prepare the local repository folder
             os.makedirs(self.repo_folder, exist_ok=True)
-            logger.info(f"Using local repository folder: '{self.repo_folder}'")
 
             # Clone the repository
-            logger.info(f"Cloning repository into '{self.repo_folder}'...")
-            clone_url = repo.clone_url.replace('https://', f'https://{self.github_token}@')
+            logger.info(f"Cloning repository {self.info.repo_full_name} into '{self.repo_folder}'...")
             try:
                 git.Repo.clone_from(clone_url, self.repo_folder)
-                logger.info(f"Repository cloned successfully into '{self.repo_folder}'")
-                git.cmd.Git().config('--global', '--add', 'safe.directory', self.repo_folder)
-                logger.info(f"Safe directory added: {self.repo_folder}")
+                logger.info(f"Repository cloned successfully.")
+                if requires_safe_directory:
+                    git.cmd.Git().config('--global', '--add', 'safe.directory', self.repo_folder)
+                    logger.info(f"Safe directory added: {self.repo_folder}")
             except Exception as e:
                 logger.error(f"Error cloning repository: {e}")
                 raise
@@ -210,10 +232,40 @@ class Project:
             logger.error(f"Error pulling latest changes: {e}")
             raise
         
+    def get_current_commit(self):
+        """Fetches the current commit hash for the repository.
+
+        Returns:
+            str: The current commit hash.
+        """
+        try:
+            repo = git.Repo(self.repo_folder)
+            current_commit = repo.head.commit.hexsha
+            logger.info(f"Current commit hash: {current_commit}")
+            return current_commit
+        except Exception as e:
+            logger.error(f"Error fetching the current commit hash: {e}")
+            raise
+
+    def reset_to_commit(self, commit_hash):
+        """Resets the repository to a specific commit hash.
+
+        Args:
+            commit_hash (str): The commit hash to reset to.
+        """
+        try:
+            repo = git.Repo(self.repo_folder)
+            repo.git.reset('--hard', commit_hash)
+            logger.info(f"Repository reset to commit {commit_hash}.")
+        except Exception as e:
+            logger.error(f"Error resetting repository to commit {commit_hash}: {e}")
+            raise
+
     def update_codebase_understanding(self, modified_files=None):
         """Updates the semantic understanding of the codebase.
 
-        Summarizes only modified files or all files if none specified.
+        Orchestrates generating semantic summaries, higher order package summaries
+        and updating vector stores.
 
         Args:
             modified_files (list, optional): List of modified file paths. If None, all files are processed.
@@ -223,132 +275,176 @@ class Project:
         # Pull the latest changes from the repository
         self.pull_latest_changes()
 
-        # If modified_files is None or empty, summarize all files
+        # Step 1: Generate semantic summaries
+        _, all_processed_files = self.generate_semantic_summaries(modified_files)
+
+        # Step 2: Regenerate package summaries
+        top_level_packages = self.get_top_level_packages(all_processed_files)
+        self.generate_package_summaries(top_level_packages)
+
+        # Step 3: Update file-level vector stores
+        self.update_vector_store(VectorType.CODE, all_processed_files)
+        self.update_vector_store(VectorType.SEMANTIC_SUMMARY, all_processed_files)
+
+        # Step 4: if we are here, process has not been interrupted. delete checkpoint
+        self.delete_checkpoint()
+        logger.info("Processing complete. Checkpoint deleted.")
+
+    def generate_semantic_summaries(self, modified_files: List[str] = None) -> Tuple[List[str], List[str]]:
+        """Generates semantic summaries for the specified files.
+
+        Args:
+            modified_files (List[str], optional): List of modified file paths. If None, all files are processed.
+
+        Returns:
+            Tuple[List[str], List[str]]:
+                - List of files processed in the current run.
+                - List of all processed files (cumulative).
+        """
         if not modified_files:
-            modified_files = []
-            for root, _, files in os.walk(self.module_src_folder):
-                for file in files:
-                    if file.endswith('.py'):
-                        relative_path = os.path.relpath(os.path.join(root, file), self.module_src_folder)
-                        modified_files.append(relative_path)
-        else:
-            # Filter out non-code files from the modified files list
-            modified_files = [file for file in modified_files if file.endswith('.py')]
-        
-        # If there are no code files to process, return early
-        if not modified_files:
-            logger.info("No code files modified. Skipping update.")
-            return
+            # Default to all .py files in the module source folder
+            modified_files = [
+                os.path.relpath(os.path.join(root, file), self.module_src_folder)
+                for root, _, files in os.walk(self.module_src_folder)
+                for file in files if file.endswith('.py')
+            ]
 
+        # Filter out already processed files
+        files_to_process = [
+            file for file in modified_files
+            if file not in self.checkpoint_data[FILES_PROCESSED]
+        ]
+        logger.info(f"Skipping already processed files: {self.checkpoint_data[FILES_PROCESSED]}.")
 
-        # Update semantic understanding for modified files
-        os.makedirs(self.package_details_folder, exist_ok=True)  # where we store semantic descriptions
-        semantic_summaries_vector_store = self.get_vector_store(VectorType.SEMANTIC_SUMMARY.value)
-        code_files_vector_store = self.get_vector_store(VectorType.CODE.value)
+        if not files_to_process:
+            logger.info("No new files to process for semantic summaries.")
+            return [], self.checkpoint_data[FILES_PROCESSED]
 
-        for file_path in modified_files:
-            if file_path in self.checkpoint_data[FILES_PROCESSED]:
-                logger.info(f"Skipping already processed file: {file_path}")
-                continue
+        os.makedirs(self.package_details_folder, exist_ok=True)  # Ensure output directory exists
 
+        processed_files = []
+        for file_path in files_to_process:
             full_file_path = os.path.join(self.module_src_folder, file_path)
-            if os.path.exists(full_file_path) and file_path.endswith('.py'):
-                # Determine top-level package
-                if os.sep in file_path:
-                    top_level_package = file_path.split(os.sep)[0]
-                else:
-                    # If the file is in the root of the source folder, use the source folder as top-level package
-                    top_level_package = self.info.src_folder
-
-                try:
+            try:
+                if os.path.exists(full_file_path):
                     with open(full_file_path, 'r') as file:
                         code = file.read()
 
                     if code.strip():
                         summary = generate_semantic_description(code)
-                        file_doc_path = os.path.join(self.package_details_folder, file_path + ".md")
-                        os.makedirs(os.path.dirname(file_doc_path), exist_ok=True)
-                        with open(file_doc_path, 'w') as f:
-                            f.write(summary)
-                        fp = os.path.join(self.info.src_folder, file_path)
-                        logger.info(f"Updated semantic summary for file: {fp}")
-                        # Add to vector store
-                        code_files_vector_store.add_documents(
-                            documents=[Document(page_content=code, metadata={"filepath": fp})],
-                            ids=[fp]
-                        )
-                        logger.info(f"Added code file to code vector store: {fp}")
-                        semantic_summaries_vector_store.add_documents(
-                            documents=[Document(page_content=summary, metadata={"filepath": fp})],
-                            ids=[fp])
-                        logger.info(f"Added semantic summary to code vector store: {fp}")
+                        summary_file_path = os.path.join(self.package_details_folder, f"{file_path}.md")
+                        os.makedirs(os.path.dirname(summary_file_path), exist_ok=True)
+                        with open(summary_file_path, 'w') as summary_file:
+                            summary_file.write(summary)
+                        processed_files.append(file_path)
+                        logger.info(f"Generated semantic summary for: {file_path}")
+
+                        # Update and save checkpoint after successful processing
+                        self.checkpoint_data[FILES_PROCESSED].append(file_path)
+                        self.save_checkpoint()
                     else:
                         logger.info(f"Skipped empty file: {file_path}")
+                else:
+                    logger.warning(f"File not found: {file_path}")
+            except Exception as e:
+                logger.exception(f"Error generating semantic summary for '{file_path}': {e}")
+                self.checkpoint_data['unprocessed_files'][file_path] = str(e)
+                self.save_checkpoint()
 
-                    # Mark the file as processed
-                    self.checkpoint_data[FILES_PROCESSED].append(file_path)
-                    self.save_checkpoint()
-                except Exception as e:
-                    logger.exception(f"Error summarizing file '{file_path}'")
-                    # Add the file to unprocessed
-                    if top_level_package not in self.checkpoint_data[UNPROCESSED]:
-                        self.checkpoint_data[UNPROCESSED][top_level_package] = []
-                    if file_path not in self.checkpoint_data[UNPROCESSED][top_level_package]:
-                        self.checkpoint_data[UNPROCESSED][top_level_package].append(file_path)
+        # Return both newly processed files and all processed files
+        all_processed_files = self.checkpoint_data[FILES_PROCESSED]
+        return processed_files, all_processed_files
 
-        # Regenerate package summaries for affected top-level packages
+    def get_top_level_packages(self, file_paths: List[str]) -> List[str]:
+        """Identifies top-level packages affected by the given file paths.
+
+        Args:
+            file_paths (List[str]): List of file paths.
+
+        Returns:
+            List[str]: List of top-level package names.
+        """
+        top_level_packages = set()
+        for file_path in file_paths:
+            if os.sep in file_path:
+                top_level_package = file_path.split(os.sep)[0]
+            else:
+                top_level_package = self.info.src_folder
+            top_level_packages.add(top_level_package)
+        return list(top_level_packages)
+
+    def generate_package_summaries(self, top_level_packages: List[str]):
+        """Regenerates package summaries for the specified top-level packages.
+
+        Args:
+            top_level_packages (List[str]): List of top-level package names.
+        """
+        logger.info(f"Regenerating package summaries for packages: {top_level_packages}")
         os.makedirs(self.package_summaries_folder, exist_ok=True)
-        top_level_packages = {
-            file_path.split(os.sep)[0] if os.sep in file_path else self.info.src_folder
-            for file_path in modified_files
-            if file_path
-        }
 
         for package in top_level_packages:
-            # Skip if the package is already processed and has no unprocessed files
-            if package in self.checkpoint_data[PACKAGES_PROCESSED] and package not in self.checkpoint_data[UNPROCESSED]:
-                logger.info(f"Skipping already processed package: {package}")
-                continue
-
             try:
-                package_details_content = self.fetch_package_details([package])
+                # Fetch package details
+                package_details = self.fetch_package_details([package])
 
-                if package_details_content:
-                    package_summary = generate_package_summary(package, package_details_content)
-                    package_summary_doc_path = os.path.join(self.package_summaries_folder, f"{package}.md")
+                # Generate summary if details are available
+                if package_details:
+                    package_summary = generate_package_summary(package, package_details)
+                    summary_path = os.path.join(self.package_summaries_folder, f"{package}.md")
 
-                    # Write the generated package summary to a file
-                    with open(package_summary_doc_path, "w") as package_summary_doc:
-                        package_summary_doc.write(package_summary)
+                    # Write the summary to a file
+                    with open(summary_path, 'w') as summary_file:
+                        summary_file.write(package_summary)
+                    logger.info(f"Generated package summary for package: {package}")
 
-                    logger.info(f"Updated package summary for top-level package: {package}")
-                    # Add to checkpoint
-                    self.checkpoint_data[PACKAGES_PROCESSED].append(package)
-
-                    # Clean up the unprocessed dictionary if all files are processed
-                    if package in self.checkpoint_data[UNPROCESSED]:
-                        for file_path in list(self.checkpoint_data[UNPROCESSED][package]):
-                            if file_path in self.checkpoint_data[FILES_PROCESSED]:
-                                self.checkpoint_data[UNPROCESSED][package].remove(file_path)
-
-                        # If no unprocessed files remain, remove the package entry
-                        if not self.checkpoint_data[UNPROCESSED][package]:
-                            del self.checkpoint_data[UNPROCESSED][package]
-
+                    # Update and save checkpoint after successful processing
+                    if package not in self.checkpoint_data[PACKAGES_PROCESSED]:
+                        self.checkpoint_data[PACKAGES_PROCESSED].append(package)
                     self.save_checkpoint()
             except Exception as e:
-                logger.exception(f"Error updating package summary for '{package}'.")
+                logger.exception(f"Error generating package summary for package '{package}': {e}")
+                # Record unprocessed packages with exceptions
+                self.checkpoint_data['unprocessed_packages'][package] = str(e)
+                self.save_checkpoint()
 
-        # If all processing is complete, delete the checkpoint
-        logger.info("Check if we can delete the checkpoint...")
-        if (
-            len(self.checkpoint_data[FILES_PROCESSED]) == len(modified_files)
-            and len(self.checkpoint_data[PACKAGES_PROCESSED]) == len(top_level_packages)
-            and not self.checkpoint_data[UNPROCESSED]
-        ):
-            self.delete_checkpoint()
-            logger.info("Checkpoint deleted.")
+    def update_vector_store(self, vector_type: VectorType, file_paths: List[str]) -> None:
+        """Updates the specified vector store with new documents.
 
+        Args:
+            vector_type (VectorType): The type of vector store to update (e.g., CODE or SEMANTIC_SUMMARY).
+            file_paths (List[str]): List of file paths to add to the vector store.
+        """
+        if not file_paths:
+            logger.info(f"No files to update for vector store: {vector_type.value}")
+            return
+
+        vector_store = self.get_vector_store(vector_type.value)
+        contents = []
+        metadata_filepaths = []
+
+        for file_path in file_paths:
+            full_file_path = os.path.join(
+                self.package_details_folder if vector_type == VectorType.SEMANTIC_SUMMARY else self.module_src_folder,
+                file_path + (".md" if vector_type == VectorType.SEMANTIC_SUMMARY else "")
+            )
+
+            try:
+                with open(full_file_path, 'r') as f:
+                    contents.append(f.read())
+                metadata_filepaths.append(os.path.join(self.info.src_folder, file_path))
+            except Exception as e:
+                logger.warning(f"Failed to read file for vector store: {full_file_path}, error: {e}")
+
+        if contents and metadata_filepaths:
+            add_documents(
+                contents=contents,
+                filepaths=metadata_filepaths, 
+                uri=self.get_vector_store_uri(vector_type.value),
+                embeddings=vector_store.embeddings)
+            logger.info(f"Updated {vector_type.value} vector store with {len(metadata_filepaths)} files.")
+        else:
+            logger.info(f"No valid content to add to {vector_type.value} vector store.")
+    
     def onboard(self):
         """Performs the initial onboarding of the project.
 
@@ -495,8 +591,9 @@ class Project:
             comment_body (str): The body of the comment to post.
         """
         try:
+            github = self.get_github_instance()
             # Get the repository
-            repo = self.github.get_repo(self.info.repo_full_name)
+            repo = github.get_repo(self.info.repo_full_name)
             # Get the issue
             issue = repo.get_issue(number=issue_number)
             # Post the comment
@@ -516,7 +613,8 @@ class Project:
             list: List of dictionaries containing user login and comment body.
         """
         try:
-            repo = self.github.get_repo(self.info.repo_full_name)
+            github = self.get_github_instance()
+            repo = github.get_repo(self.info.repo_full_name)
             issue = repo.get_issue(number=issue_number)
             comments = []
             for comment in issue.get_comments():
@@ -533,68 +631,28 @@ class Project:
 
     def build_vector_store_from_existing_summaries(self):
         """Builds the vector store by reading existing semantic summaries."""
-        contents = []
-        filepaths = []
-        
-        # Iterate over all semantic summary files in the package details folder
-        for root, _, files in os.walk(self.package_details_folder):
-            for file in files:
-                if file.endswith('.md'):
-                    file_path = os.path.join(root, file)
-                    # Compute the relative filepath from the package_details_folder
-                    relative_file_path = os.path.relpath(file_path, self.package_details_folder)
-                    # Remove the .md extension
-                    relative_file_path = relative_file_path[:-3]
-                    # Read the summary content
-                    with open(file_path, 'r') as f:
-                        summary_content = f.read()
-                    # Append to the list
-                    contents.append(summary_content)
-                    filepaths.append(os.path.join(self.info.src_folder, relative_file_path))
-
-        # Bulk add documents to the vector store
-        if filepaths:
-            vector_store = self.get_vector_store(VectorType.SEMANTIC_SUMMARY.value)
-            vector_store.add_documents(
-                documents=[
-                    Document(page_content=content, metadata={"filepath": filepath})
-                    for content, filepath in zip(contents, filepaths)
-                ],
-                ids=filepaths
+        try:
+            create_or_update_vector_store(
+                source_dir=self.package_details_folder,
+                uri=self.get_vector_store_uri(),
+                embeddings=fetch_llm_for_task(TaskName.EMBEDDING),
+                path_prefix=self.info.src_folder
             )
-            logger.info(f"Added {len(filepaths)} documents to the vector store.")
-        else:
-            logger.info("No documents found to add to the vector store.")
+            logger.info("Vector store for semantic summaries created successfully.")
+        except Exception as e:
+            logger.error(f"Failed to create vector store from semantic summaries: {e}")
+            raise
 
     def build_vector_store_from_code_files(self):
         """Builds the code vector store"""
-        contents = []
-        filepaths = []
-        
-        # Iterate over all code files in the module src folder
-        for root, _, files in os.walk(self.module_src_folder):
-            for file in files:
-                if file.endswith('.py'):
-                    file_path = os.path.join(root, file)
-                    # Compute the relative filepath from the module_src_folder
-                    relative_file_path = os.path.relpath(file_path, self.module_src_folder)
-                    # Read the code file content
-                    with open(file_path, 'r') as f:
-                        code = f.read()
-                    # Append to the list
-                    contents.append(code)
-                    filepaths.append(os.path.join(self.info.src_folder, relative_file_path))
-
-        # Bulk add documents to the vector store
-        if filepaths:
-            vector_store = self.get_vector_store(VectorType.CODE.value)
-            vector_store.add_documents(
-                documents=[
-                    Document(page_content=content, metadata={"filepath": filepath})
-                    for content, filepath in zip(contents, filepaths)
-                ],
-                ids=filepaths
+        try:
+            create_or_update_vector_store(
+                source_dir=self.module_src_folder,
+                uri=self.get_vector_store_uri(),
+                embeddings=fetch_llm_for_task(TaskName.EMBEDDING),
+                path_prefix=self.info.src_folder
             )
-            logger.info(f"Added {len(filepaths)} documents to the vector store.")
-        else:
-            logger.info("No documents found to add to the vector store.")
+            logger.info("Vector store for code files created successfully.")
+        except Exception as e:
+            logger.error(f"Failed to create vector store from code files: {e}")
+            raise

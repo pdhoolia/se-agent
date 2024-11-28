@@ -21,7 +21,7 @@ LOCALIZATION_STRATEGY = LocalizationStrategyType(
     os.getenv('LOCALIZATION_STRATEGY', LocalizationStrategyType.HIERARCHICAL)
 )  # Localization strategy to use
 
-LOG_MSG_LENGTH = 50  # Maximum length of log messages
+LOG_MSG_LENGTH = 130  # Maximum length of log messages
 
 def get_project_manager():
     """Retrieves the ProjectManager instance.

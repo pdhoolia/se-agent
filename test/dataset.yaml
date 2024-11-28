@@ -223,3 +223,10 @@ test_cases:
     filepath: issues/test_case_32.md
     expected_results:
       - semantic_vector_search
+  - id: test_case_33
+    title: "Support for evaluation of se-agent using SWE-bench"
+    filepath: issues/test_case_33.md
+    expected_results:
+      - project
+      - vector_store_utils
+      - listener_core

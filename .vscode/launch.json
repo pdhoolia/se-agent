@@ -84,5 +84,21 @@
             },
             "justMyCode": false
         },
+        {   "name": "Evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/se_agent/evaluation/evaluate.py",
+            "args": [
+                "pdhoolia/se-agent",
+                "42",
+                "test/issues/test_case_33.md",
+                "--base_commit", "e50a4f7ba996935f4f4bddd3c17189ddb8cf3a5e"
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "justMyCode": false
+        }
     ]
 }
