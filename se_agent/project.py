@@ -169,6 +169,14 @@ class Project:
         if os.path.exists(self.checkpoint_file):
             os.remove(self.checkpoint_file)
         
+    def is_cloned(self):
+        """Checks if the repository is already cloned.
+
+        Returns:
+            bool: True if the repository is already cloned, False otherwise.
+        """
+        return os.path.exists(self.repo_folder) and os.listdir(self.repo_folder)
+
     def clone_repository(self, requires_safe_directory: bool = True, requires_auth: bool = True):
         """Clones the repository if it doesn't exist.
 
@@ -178,7 +186,7 @@ class Project:
         os.makedirs(self.repo_folder, exist_ok=True)
 
         # Check if the repository is already cloned
-        if os.listdir(self.repo_folder):
+        if self.is_cloned():
             logger.info("Repository already cloned.")
             if requires_safe_directory:
                 git_cmd = git.cmd.Git()

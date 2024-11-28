@@ -6,13 +6,16 @@ from se_agent.llm.model_configuration_manager import TaskName
 from se_agent.localize.semantic_vector_search import SemanticVectorSearchLocalizer
 from se_agent.project import Project
 from se_agent.project_info import ProjectInfo
+from se_agent.project_manager import ProjectManager
 from se_agent.util.vector_store_utils import VectorType, create_or_update_vector_store, get_vector_store
 
 logger = logging.getLogger("se-agent")
 TOP_N = 5
 LOG_MSG_LENGTH = 200  # Maximum str length of log messages
+provider = os.getenv('LLM_PROVIDER_NAME')
+vector_type = VectorType.CODE.value
 
-def evaluate(repo_full_name: str, instance_id: str, problem_statement: str, base_commit: str="HEAD"):
+def evaluate(project: Project, instance_id: str, problem_statement: str, base_commit: str):
     """
     Evaluates the se-agent for a given task instance using the SWE-bench dataset.
 
@@ -21,7 +24,7 @@ def evaluate(repo_full_name: str, instance_id: str, problem_statement: str, base
     results in a designated evaluation directory.
 
     Args:
-        repo_full_name (str): The full name of the repository (e.g., "owner/repo").
+        project (Project): The Project instance for the repository to evaluate.
         instance_id (str): The unique identifier for the evaluation task instance.
         problem_statement (str): The problem statement or issue body to be evaluated.
         base_commit (str): The commit hash on which the problem statement is based. Defaults to "HEAD".
@@ -39,15 +42,7 @@ def evaluate(repo_full_name: str, instance_id: str, problem_statement: str, base
     Raises:
         Exception: Propagates any exceptions encountered during the evaluation process.
     """
-    projects_store = os.getenv('PROJECTS_STORE')
-    github_token = os.getenv('GITHUB_TOKEN')
-    provider = os.getenv('LLM_PROVIDER_NAME')
-    vector_type = VectorType.CODE.value
     
-    # Create ProjectInfo and Project instance
-    project_info = ProjectInfo(repo_full_name=repo_full_name, src_folder='se_agent', github_token=github_token)
-    project = Project(github_token, projects_store, project_info)
-
     # Get current commit hash (to reset back later)
     current_commit = project.get_current_commit()
 
@@ -64,7 +59,7 @@ def evaluate(repo_full_name: str, instance_id: str, problem_statement: str, base
     logger.info(f"Vector store URI: {vector_store_uri}")
     embeddings = fetch_llm_for_task(TaskName.EMBEDDING)
     if not os.path.exists(vector_store_uri):
-        vector_store = create_or_update_vector_store(project.module_src_folder, vector_store_uri, embeddings, path_prefix=project_info.src_folder)
+        vector_store = create_or_update_vector_store(project.module_src_folder, vector_store_uri, embeddings, path_prefix=project.info.src_folder)
         logger.info(f"Vector store created at: {vector_store_uri}")
     else:
         vector_store = get_vector_store(embeddings, vector_store_uri)
@@ -96,6 +91,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Evaluate the se-agent for a given task instance using the SWE-bench dataset.")
     parser.add_argument("repo_full_name", type=str, help="Full name of the GitHub repo to evaluate (e.g., 'owner/repo').")
+    parser.add_argument("src_folder", type=str, help="Source folder within the repo containing the code to evaluate.")
     parser.add_argument("instance_id", type=str, help="Unique identifier for the evaluation task instance.")
     parser.add_argument("problem_filepath", type=str, help="Path to the file containing the problem statement.")
     parser.add_argument("--base_commit", type=str, default="HEAD", help="Commit hash on which the problem statement is based.")
@@ -103,4 +99,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with open(args.problem_filepath, 'r') as f:
         problem_statement = f.read()
-    evaluate(args.repo_full_name, args.instance_id, problem_statement, args.base_commit)
+
+    # Create ProjectInfo and Project instance
+    projects_store = os.getenv('PROJECTS_STORE')
+    github_token = os.getenv('GITHUB_TOKEN')
+
+    project_manager = ProjectManager(projects_store)
+    
+    project_info = ProjectInfo(repo_full_name=args.repo_full_name, src_folder=args.src_folder, github_token=github_token)
+    project = Project(github_token, projects_store, project_info)
+
+    evaluate(project, args.instance_id, problem_statement, args.base_commit)

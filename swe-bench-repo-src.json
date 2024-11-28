@@ -1,0 +1,8 @@
+{
+    "sqlfluff/sqlfluff": "src/sqlfluff",
+    "marshmallow-code/marshmallow": "src/marshmallow",
+    "pvlib/pvlib-python": "pvlib",
+    "pylint-dev/astroid": "astroid",
+    "pyvista/pyvista": "pyvista",
+    "pydicom/pydicom": "src/pydicom"
+}

@@ -1,2 +1,10 @@
 pytest-flask
+datasets
+ipywidgets
+jupyterlab
+matplotlib
+notebook
 pandas
+plotly
+seaborn
+wordcloud
