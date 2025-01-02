@@ -208,11 +208,11 @@ Amazon Linux comes with python 3.9 pre-installed. To install python 3.12, we nee
         }
 
         error_page 404 /404.html;
-            location = /404.html {
+        location = /404.html {
         }
 
         error_page 500 502 503 504 /50x.html;
-            location = /50x.html {
+        location = /50x.html {
         }
     }
     ```
