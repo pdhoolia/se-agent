@@ -109,7 +109,7 @@ def fetch_embedding_model(model_name: str) -> Embeddings:
         return OpenAIEmbeddings(model=model_name)
     elif PROVIDER == "ollama":
         return OllamaEmbeddings(model=model_name)
-    elif PROVIDER == "huggingface":
+    elif PROVIDER == "watsonx":
         return HuggingFaceEmbeddings(model_name=model_name)
     else:
         raise ValueError(f"Unsupported embedding provider: {PROVIDER}")
