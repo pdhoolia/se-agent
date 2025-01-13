@@ -3,7 +3,7 @@
 # @server_url = http://localhost:3000
 @server_url = http://se-agent.sl.cloud9.ibm.com:3000
 
-### Onboard: New Project
+### Onboard: New Project: GitHub Public
 POST {{server_url}}/onboard HTTP/1.1
 Content-Type: application/json
 Accept: application/json
@@ -14,7 +14,7 @@ Accept: application/json
     "main_branch": "main"
 }
 
-### Onboard / Refresh: Existing Project
+### Onboard / Refresh: Existing Project: GitHub Public
 PUT {{server_url}}/onboard HTTP/1.1
 Content-Type: application/json
 Accept: application/json
@@ -23,6 +23,31 @@ Accept: application/json
     "repo_full_name": "pdhoolia/se-agent",
     "src_folder": "se_agent",
     "main_branch": "main"
+}
+
+### Onboard: New Project: GHE
+POST {{server_url}}/onboard HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+    "repo_full_name": "conversational-ai/se-agent",
+    "src_folder": "se_agent",
+    "main_branch": "main",
+    "api_url": "https://github.ibm.com/api/v3"
+}
+
+
+### Onboard / Refresh: Existing Project: GHE
+PUT {{server_url}}/onboard HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+    "repo_full_name": "conversational-ai/se-agent",
+    "src_folder": "se_agent",
+    "main_branch": "main",
+    "api_url": "https://github.ibm.com/api/v3"
 }
 
 ### Test Issue Creation Event
