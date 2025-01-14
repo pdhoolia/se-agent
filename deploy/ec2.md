@@ -18,13 +18,13 @@
 
 ## Launch an EC2 instance
 This screen gives a rough overview of the launched instance
-![Launch instance overview](media/ec2-instance-overview.png)
+![Launch instance overview](../media/ec2-instance-overview.png)
 
 Following inbound and outbound security rules ensure that the instance can be accessed via ssh, http, and https
-![Security group rules](media/ec2-security-group.png)
+![Security group rules](../media/ec2-security-group.png)
 
 Following routing table rules ensure that the subnet on which the instance is launched has access to the internet
-![Routing table rules](media/ec2-routing-table.png)
+![Routing table rules](../media/ec2-routing-table.png)
 
 ## SSH into the instance
 
@@ -301,11 +301,11 @@ Amazon Linux comes with python 3.9 pre-installed. To install python 3.12, we nee
 
 1. Go to the domain settings in Google Workspace
 
-    ![Google Workspace domain settings](media/google-workspace-domain-settings.png)
+    ![Google Workspace domain settings](../media/google-workspace-domain-settings.png)
 
 2. Add new records to forward the domain to the EC2 instance's public IP
 
-    ![Squarespace domain forward to EC2](media/squarespace-domain-forward.png)
+    ![Squarespace domain forward to EC2](../media/squarespace-domain-forward.png)
 
 3. After a few minutes HTTP URLs `http://dhoolia.com` or `https://www.dhoolia.com` should be forwarded to the SE agent server running on our EC2 instance.
 
@@ -343,7 +343,7 @@ We started with `t4g.micro` template with 8 GB of storage. Semantic vector searc
 3. We also added more storage to the instance
 
     First, we added more storage to the instance from the AWS console
-    ![Instance storage](media/ec2-instance-storage.png)
+    ![Instance storage](../media/ec2-instance-storage.png)
 
     Then, we run the following commands on our instance to resize the partition and filesystem to use the added storage
 
