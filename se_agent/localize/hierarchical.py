@@ -151,24 +151,30 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
         if self.project.info.top_n_packages:
             top_n = self.project.info.top_n_packages
 
-        # Fetch package summaries from the project
-        package_summaries = self.project.fetch_package_summaries()
+        # Fetch package summaries and a list of packages from the project
+        package_summaries, package_list = self.project.fetch_package_summaries()
 
-        # Generate the prompt for identifying relevant packages
-        messages = prompt_identify_relevant_packages(issue, package_summaries)
+        # If there's only one package, skip LLM call for package identification
+        relevant_packages = package_list if len(package_list) == 1 else []
 
-        try:
-            # Call LLM to identify relevant packages
-            llm_response = call_llm_for_task(
-                task_name=TaskName.LOCALIZE,
-                messages=messages,
-                response_format=RelevantPackages
-            )
-            relevant_packages = llm_response.relevant_packages if llm_response else []
-            logger.debug(f"Relevant Packages: {relevant_packages}")
-        except Exception as e:
-            logger.exception("Error calling LLM for relevant packages.")
-            return []
+        if not relevant_packages:
+            # Generate the prompt for identifying relevant packages
+            messages = prompt_identify_relevant_packages(issue, package_summaries)
+
+            try:
+                # Call LLM to identify relevant packages
+                llm_response = call_llm_for_task(
+                    task_name=TaskName.LOCALIZE,
+                    messages=messages,
+                    response_format=RelevantPackages
+                )
+                llm_relevant_packages = llm_response.relevant_packages if llm_response else []
+                logger.debug(f"LLM returned relevant packages: {llm_relevant_packages}")
+                # Apply fuzziness to map LLM response to actual package names
+                relevant_packages = self.apply_fuzziness_to_packages(llm_relevant_packages, package_list)
+            except Exception as e:
+                logger.exception("Error calling LLM for relevant packages.")
+                return []
 
         # Fetch detailed documentation for the identified packages
         package_details = self.project.fetch_package_details(relevant_packages[:top_n])
@@ -196,6 +202,36 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
             self.get_file_path(suggestion)
             for suggestion in localization_suggestions
         ]
+
+    def apply_fuzziness_to_packages(self, llm_packages: List[str], actual_packages: List[str]) -> List[str]:
+        """Applies fuzziness to map LLM identified packages to actual package names.
+
+        Args:
+            llm_packages (List[str]): Packages identified by LLM.
+            actual_packages (List[str]): Actual packages in the project.
+
+        Returns:
+            List[str]: Mapped list of actual package names.
+        """
+        mapped_packages = []
+        for llm_package in llm_packages:
+            # Normalize LLM package response
+            normalized_llm_package = llm_package.replace('/', '.').replace('.py', '')
+
+            # Direct match or fuzzy match
+            for actual_package in actual_packages:
+                if  normalized_llm_package == actual_package or \
+                normalized_llm_package.endswith(actual_package.split('.')[-1]):
+                    mapped_packages.append(actual_package)
+                    break
+
+            # Fuzzy match using filename to package mapping
+            filename = llm_package.split('/')[-1]
+            package_from_filename = self.project.get_package(filename)
+            if package_from_filename:
+                mapped_packages.add(package_from_filename)
+
+        return mapped_packages
 
     def get_file_path(self, localization_suggestion: FileLocalizationSuggestion) -> str:
         """Generates the relative file path (in the repo) for a localization suggestion.

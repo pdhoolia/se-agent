@@ -537,20 +537,22 @@ class Project:
 
         # Start building the document from the root folder
         return build_document(root_folder, 1, recurse=recurse)
-
+    
     def fetch_package_summaries(self):
-        """Fetches all package summaries and concatenates them.
+        """Fetches all package summaries and concatenates them, along with returning the list of package names.
 
         Returns:
-            str: The concatenated package summaries.
+            Tuple[str, List[str]]: The concatenated package summaries and the list of package names.
         """
         package_summaries = ""
+        package_names = []
         for item in os.listdir(self.package_summaries_folder):
             item_path = os.path.join(self.package_summaries_folder, item)
             if os.path.isfile(item_path):
                 with open(item_path, 'r') as file:
                     package_summaries += file.read() + "\n\n"
-        return package_summaries
+                package_names.append(item.replace('.md', ''))
+        return package_summaries, package_names
 
     def fetch_package_details(self, packages):
         """Fetches detailed documentation for the specified packages.
@@ -571,6 +573,35 @@ class Project:
                     recurse=False if package == self.info.src_folder else True
                 ) + "\n\n"
         return package_details
+
+    def get_package(self, filename: str) -> str:
+        """
+        Returns the top-level package name that contains the filename.
+
+        Top-level packages are:
+            - either self.info.src_folder.split('/')[-1], if the file is found directly in self.module_src_folder
+            - or the name of the folder if it is found (recursively) within one of the direct child folders of the self.module_src_folder
+
+        Args:
+            filename (str): Name of the file.
+
+        Returns:
+            str: Name of the package that contains the resource.
+        """
+        for root, dirs, files in os.walk(self.module_src_folder):
+            if filename in files:
+                # Determine the package path relative to src folder
+                relative_path = os.path.relpath(root, self.module_src_folder)
+                package_parts = relative_path.split(os.sep)
+
+                # If the file is found directly under src_folder
+                if not relative_path or relative_path == '.':
+                    return self.info.src_folder.split('/')[-1]
+
+                # Otherwise, return the top-level directory
+                return package_parts[0]
+
+        return None
 
     def fetch_code_files(self, filepaths: List[str]):
         """Retrieves the contents of the specified code files.
