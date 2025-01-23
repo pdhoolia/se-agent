@@ -8,8 +8,12 @@ semantic summaries of the project's packages and files.
 
 import logging
 import os
-from typing import Dict, List, Any
+import json
+import re
 
+from typing import Dict, List, Any, TypeVar, Type
+
+from langchain_core.exceptions import OutputParserException
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel
 
@@ -162,7 +166,6 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
             messages = prompt_identify_relevant_packages(issue, package_summaries)
 
             try:
-                # Call LLM to identify relevant packages
                 llm_response = call_llm_for_task(
                     task_name=TaskName.LOCALIZE,
                     messages=messages,
@@ -170,18 +173,30 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
                 )
                 llm_relevant_packages = llm_response.relevant_packages if llm_response else []
                 logger.debug(f"LLM returned relevant packages: {llm_relevant_packages}")
-                # Apply fuzziness to map LLM response to actual package names
-                relevant_packages = self.apply_fuzziness_to_packages(llm_relevant_packages, package_list)
+            except OutputParserException as e:
+                logger.debug(f"Attempting to extract JSON with fallback parser: {str(e)}")
+                try:
+                    raw_response = e.llm_output  # Assuming this contains the raw LLM response
+                    llm_response = extract_pydantic(raw_response, RelevantPackages)
+                    llm_relevant_packages = llm_response.relevant_packages
+                    logger.debug(f"Fallback parser extracted packages: {llm_relevant_packages}")
+                except ValueError as ve:
+                    logger.warning(f"Fallback parser failed, attempting package extraction: {str(ve)}")
+                    llm_relevant_packages = extract_filenames(raw_response)
+                logger.debug(f"Extracted packages: {llm_relevant_packages}")
             except Exception as e:
                 logger.exception("Error calling LLM for relevant packages.")
                 return []
+
+            relevant_packages = self.apply_fuzziness_to_packages(llm_relevant_packages, package_list)
+            logger.debug(f"Relevant packages after fuzzy mapping: {relevant_packages}")
 
         # Fetch detailed documentation for the identified packages
         package_details = self.project.fetch_package_details(relevant_packages[:top_n])
 
         # Generate the prompt for file localization
         messages = prompt_localize_to_files(issue, package_details)
-
+        
         try:
             # Call LLM for file localization
             llm_response = call_llm_for_task(
@@ -193,6 +208,25 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
                 llm_response.file_localization_suggestions if llm_response else []
             )
             logger.debug(f"File Localization Suggestions: {localization_suggestions}")
+        except OutputParserException as e:
+            logger.debug(f"Attempting to extract JSON with fallback parser: {str(e)}")
+            try:
+                raw_response = e.llm_output
+                llm_response = extract_pydantic(raw_response, FileLocalizationSuggestions)
+                localization_suggestions = llm_response.file_localization_suggestions
+                logger.debug(f"Fallback parser extracted suggestions: {localization_suggestions}")
+            except ValueError as ve:
+                logger.warning(f"Fallback parser failed, attempting filename extraction: {str(ve)}")
+                filenames = extract_filenames(raw_response)
+                localization_suggestions = [
+                    FileLocalizationSuggestion(
+                        file=filename,
+                        package=filename,
+                        confidence=0.5,
+                        reason=""
+                    ) for filename in filenames
+                ]
+            logger.debug(f"Extracted suggestions: {localization_suggestions}")
         except Exception as e:
             logger.exception("Error calling LLM for file localization.")
             return []
@@ -230,9 +264,9 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
             filename = llm_package.split('/')[-1]
             package_from_filename = self.project.get_package(filename)
             if package_from_filename:
-                mapped_packages.add(package_from_filename)
+                mapped_packages.append(package_from_filename)
 
-        return mapped_packages
+        return list(dict.fromkeys(mapped_packages))
 
     def get_file_path(self, localization_suggestion: FileLocalizationSuggestion) -> str:
         """Generates the relative file path (in the repo) for a localization suggestion.
@@ -293,3 +327,56 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
         # If no match is found, log and return an empty string
         logger.warning(f"Unable to fuzzily correct file path for '{filename}'.")
         return ""
+
+T = TypeVar('T', bound=BaseModel)
+
+def extract_pydantic(text: str, model_class: Type[T]) -> T:
+    """
+    Extracts JSON from text and converts to specified Pydantic model.
+    
+    Args:
+        text: String containing JSON with potential surrounding text
+        model_class: Pydantic model class to parse JSON into
+        
+    Returns:
+        Instance of specified Pydantic model
+        
+    Raises:
+        ValueError: If no valid JSON found or multiple JSON blocks found
+    """
+    json_pattern = r'```(?:json)?\s*({[^`]*})\s*```'
+    matches = re.finditer(json_pattern, text, re.MULTILINE)
+    
+    found_models = []
+    for match in matches:
+        try:
+            json_str = match.group(1)
+            parsed_json = json.loads(json_str)
+            if isinstance(parsed_json, dict):
+                model = model_class.model_validate(parsed_json)
+                found_models.append(model)
+        except (json.JSONDecodeError, ValueError):
+            continue
+            
+    if not found_models:
+        raise ValueError(f"No valid JSON found matching {model_class.__name__}")
+    if len(found_models) > 1:
+        raise ValueError("Multiple valid JSON blocks found")
+        
+    return found_models[0]
+
+def extract_filenames(text: str) -> list[str]:
+    """
+    Extracts potential filenames with specified extensions from text.
+    
+    Args:
+        text: Input text to search for filenames
+        extns: List of file extensions to look for (e.g. [".py", ".java"])
+        
+    Returns:
+        Deduplicated list of potential filenames
+    """
+    FILE_EXTNS = [".py", ".java", ".js", ".jsx", ".ts", ".tsx"]
+    pattern = r'[\w/-]+(?:' + '|'.join(map(re.escape, FILE_EXTNS)).replace(r'\*', r'[\w.]*') + r')\b'
+    matches = re.finditer(pattern, text, re.MULTILINE)
+    return list(set(match.group(0) for match in matches))
