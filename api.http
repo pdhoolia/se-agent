@@ -1,7 +1,7 @@
 # @server_url = https://dhoolia.ngrok.io
 # @server_url = https://dhoolia.com
-# @server_url = http://localhost:3000
-@server_url = http://se-agent.sl.cloud9.ibm.com:3000
+@server_url = http://localhost:3000
+# @server_url = http://se-agent.sl.cloud9.ibm.com:3000
 
 ### Onboard: New Project: GitHub Public
 POST {{server_url}}/onboard HTTP/1.1

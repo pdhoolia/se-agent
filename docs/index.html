@@ -72,10 +72,6 @@
                 </div>
             </div>
             <div class="bx--form-item">
-                <label for="server_url" class="bx--label">Agent Server URL</label>
-                <input type="text" class="bx--text-input" id="server_url" name="server_url" placeholder="e.g., https://dhoolia.ngrok.io">
-            </div>
-            <div class="bx--form-item">
                 <div class="bx--btn-set">
                     <button type="button" class="bx--btn bx--btn--secondary">Cancel</button>
                     <button type="submit" class="bx--btn bx--btn--primary">Onboard</button>
@@ -125,7 +121,7 @@
                 spinner.style.display = 'flex';
                 loadingText.textContent = 'Onboarding project ...';
                 
-                let serverUrl = document.getElementById('server_url').value || 'https://dhoolia.ngrok.io';
+                let serverUrl = 'https://dhoolia.com';
                 const response = await fetch(`${serverUrl}/onboard`, {
                     method: method,
                     headers: {
