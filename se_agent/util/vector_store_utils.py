@@ -32,9 +32,11 @@ def get_vector_store(embeddings: Embeddings, uri: str) -> VectorStore:
     Returns:
         VectorStore: The Milvus vector store instance.
     """
+
     vector_store = Milvus(
         embedding_function=embeddings,
-        connection_args={"uri": uri}
+        connection_args={"uri": uri},
+        index_params=None if uri.startswith("http") else {"index_type": "FLAT", "metric_type": "L2", "params": {}}
     )
     return vector_store
 
@@ -74,7 +76,8 @@ def add_documents(contents: List[str], filepaths: List[str], uri: str, embedding
     """
     vector_store = Milvus(
         embedding_function=embeddings,
-        connection_args={"uri": uri}
+        connection_args={"uri": uri},
+        index_params=None if uri.startswith("http") else {"index_type": "FLAT", "metric_type": "L2", "params": {}}
     )
 
     if filepaths:
