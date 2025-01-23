@@ -199,8 +199,9 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
 
         # Extract file paths from localization suggestions
         return [
-            self.get_file_path(suggestion)
+            file_path
             for suggestion in localization_suggestions
+            if (file_path := self.fuzzy_get_file_path(suggestion))  # Filters out empty strings
         ]
 
     def apply_fuzziness_to_packages(self, llm_packages: List[str], actual_packages: List[str]) -> List[str]:
@@ -258,3 +259,37 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
             file_path = os.path.join(package_path, filename)
 
         return file_path
+    
+    def fuzzy_get_file_path(self, localization_suggestion: FileLocalizationSuggestion) -> str:
+        """Fuzzily validates and corrects the file path for a localization suggestion.
+
+        Args:
+            localization_suggestion (FileLocalizationSuggestion): A suggestion containing package and file info.
+
+        Returns:
+            str: The corrected relative file path in the repository.
+        """
+        # Initial file path from the standard logic
+        file_path = self.get_file_path(localization_suggestion)
+
+        # Check if the file_path exists
+        if os.path.exists(os.path.join(self.project.repo_folder, file_path)):
+            return file_path
+
+        # If the file_path does not exist, attempt fuzzy correction
+        logger.debug(f"File path '{file_path}' does not exist. Attempting fuzzy correction.")
+
+        # Get the filename from the suggestion
+        filename = localization_suggestion.file
+
+        # Search for the file in the source folder, ignoring package structure
+        for root, _, files in os.walk(self.project.module_src_folder):
+            if filename in files:
+                # Reconstruct the relative path
+                corrected_file_path = os.path.join(os.path.relpath(root, start=self.project.repo_folder), filename)
+                logger.debug(f"Fuzzily corrected file path to '{corrected_file_path}'.")
+                return corrected_file_path
+
+        # If no match is found, log and return an empty string
+        logger.warning(f"Unable to fuzzily correct file path for '{filename}'.")
+        return ""
