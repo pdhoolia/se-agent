@@ -377,7 +377,7 @@ class Project:
             if os.sep in file_path:
                 top_level_package = file_path.split(os.sep)[0]
             else:
-                top_level_package = self.info.src_folder
+                top_level_package = self._get_default_package_name()
             top_level_packages.add(top_level_package)
         return list(top_level_packages)
     
@@ -418,10 +418,9 @@ class Project:
                 self.save_checkpoint()
 
     def get_package_name(self, package):
-        package_name = os.path.relpath(package, self.info.src_folder)
-        if package_name == '.':
-            return self._get_default_package_name()
-        return package_name
+        if package == self._get_default_package_name():
+            return package
+        return os.path.relpath(package, self.info.src_folder)
 
     def _get_default_package_name(self):
         if self.info.src_folder and self.info.src_folder != '.':
