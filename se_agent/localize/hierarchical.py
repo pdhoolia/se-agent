@@ -254,11 +254,19 @@ class HierarchicalLocalizationStrategy(LocalizationStrategy):
             normalized_llm_package = llm_package.replace('/', '.').replace('.py', '')
 
             # Direct match or fuzzy match
-            for actual_package in actual_packages:
-                if  normalized_llm_package == actual_package or \
-                normalized_llm_package.endswith(actual_package.split('.')[-1]):
-                    mapped_packages.append(actual_package)
-                    break
+            match = next(
+                (
+                    actual_package 
+                    for actual_package in actual_packages
+                    if  normalized_llm_package == actual_package or \
+                        normalized_llm_package.endswith(actual_package.split('.')[-1])
+                ),
+                None
+            )
+            
+            if match:
+                mapped_packages.append(match)
+                continue
 
             # Fuzzy match using filename to package mapping
             filename = llm_package.split('/')[-1]

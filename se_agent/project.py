@@ -380,7 +380,7 @@ class Project:
                 top_level_package = self.info.src_folder
             top_level_packages.add(top_level_package)
         return list(top_level_packages)
-
+    
     def generate_package_summaries(self, top_level_packages: List[str]):
         """Regenerates package summaries for the specified top-level packages.
 
@@ -398,12 +398,14 @@ class Project:
                 # Generate summary if details are available
                 if package_details:
                     package_summary = generate_package_summary(package, package_details)
-                    summary_path = os.path.join(self.package_summaries_folder, f"{package}.md")
+                    # Get the package name without the src_folder path
+                    package_name = self.get_package_name(package)
+                    summary_path = os.path.join(self.package_summaries_folder, f"{package_name}.md")
 
                     # Write the summary to a file
                     with open(summary_path, 'w') as summary_file:
                         summary_file.write(package_summary)
-                    logger.info(f"Generated package summary for package: {package}")
+                    logger.info(f"Generated package summary for package: {package_name}")
 
                     # Update and save checkpoint after successful processing
                     if package not in self.checkpoint_data[PACKAGES_PROCESSED]:
@@ -414,6 +416,18 @@ class Project:
                 # Record unprocessed packages with exceptions
                 self.checkpoint_data['unprocessed_packages'][package] = str(e)
                 self.save_checkpoint()
+
+    def get_package_name(self, package):
+        package_name = os.path.relpath(package, self.info.src_folder)
+        if package_name == '.':
+            return self._get_default_package_name()
+        return package_name
+
+    def _get_default_package_name(self):
+        if self.info.src_folder and self.info.src_folder != '.':
+            return self.info.src_folder.split('/')[-1].strip()
+        else:
+            return self.info.repo_full_name.split('/')[-1].strip()
 
     def update_vector_store(self, vector_type: VectorType, file_paths: List[str]) -> None:
         """Updates the specified vector store with new documents.
@@ -555,23 +569,32 @@ class Project:
         return package_summaries, package_names
 
     def fetch_package_details(self, packages):
-        """Fetches detailed documentation for the specified packages.
-
-        Args:
-            packages (list): List of package names to fetch details for.
-
-        Returns:
-            str: The concatenated content of the package details.
+        """
+        Fetches detailed documentation for the specified packages by assembling
+        a hierarchical document of each package's .md files (and its subfolders).
         """
         package_details = ""
-        for package in packages:
-            package_dir = os.path.join(self.package_details_folder, package) if package != self.info.src_folder else self.package_details_folder
-            if os.path.exists(package_dir):
-                # Use create_hierarchical_document to collate a single document for the package
-                package_details += self.create_hierarchical_document(
-                    package_dir, 
-                    recurse=False if package == self.info.src_folder else True
-                ) + "\n\n"
+
+        for pkg in packages:
+            # Figure out where the .md files actually live
+            if pkg == self._get_default_package_name():
+                # Means it's effectively '.' or root, so .md files live directly under package_details/
+                package_dir = self.package_details_folder
+                # Typically we don't want to recurse at the root if you're treating the root as a single "package."
+                # But it's up to you; you can set 'recurse=True' if that’s what you want:
+                do_recurse = False
+            else:
+                package_dir = os.path.join(self.package_details_folder, pkg)
+                do_recurse = True  # For top-level packages, you might want to gather sub-packages too.
+
+            if not os.path.exists(package_dir):
+                logger.warning(f"No package_details folder found at: {package_dir}. Skipping.")
+                continue
+
+            # 3. Build a hierarchical document from package_dir
+            details_for_this_package = self.create_hierarchical_document(package_dir, recurse=do_recurse)
+            package_details += details_for_this_package + "\n\n"
+
         return package_details
 
     def get_package(self, filename: str) -> str:
@@ -596,7 +619,7 @@ class Project:
 
                 # If the file is found directly under src_folder
                 if not relative_path or relative_path == '.':
-                    return self.info.src_folder.split('/')[-1]
+                    return self._get_default_package_name()
 
                 # Otherwise, return the top-level directory
                 return package_parts[0]
