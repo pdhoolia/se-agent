@@ -1,8 +1,12 @@
 # Using se-agent for your python projects
 
-## Onboard se-agent to your GitHub repo
+## Video Guide
 
-### Granted Access to se-agent
+https://github.ibm.com/conversational-ai/se-agent/assets/14595/10820f11-5346-48c2-8afa-32280331b9fd
+
+## Text Guide
+
+### Grant Access to se-agent
 
 1.  In your repository, go to **Settings**
 
